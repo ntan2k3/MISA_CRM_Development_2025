@@ -37,13 +37,15 @@ const menuWithActive = computed(() =>
           class="header-item flex-center"
           :class="{ active: item.active }"
         >
-          <div :class="['icon-mask', item.icon, 'icon-16', 'mb-2', { active: item.active }]" />
+          <div
+            :class="['icon-bg', 'icon-16', 'mb-2', item.active ? item.icon + '-active' : item.icon]"
+          />
           <div class="header-item-text" :class="{ active: item.active }">{{ item.text }}</div>
           <div v-if="item.active" class="active-row"></div>
         </router-link>
 
         <div class="header-item flex-center">
-          <div class="icon-mask icon-other icon-16" />
+          <div class="icon-bg icon-other icon-16" />
           <div class="header-item-text">Tất cả</div>
         </div>
       </div>
@@ -130,10 +132,6 @@ const menuWithActive = computed(() =>
 
 .header-item:last-child {
   padding: 12px;
-}
-
-.icon-mask.active {
-  background-color: #4262f0;
 }
 
 .header-item-text.active {
