@@ -1,0 +1,11 @@
+:root {
+  --primary-color: white;
+  --secondary-color: black;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
