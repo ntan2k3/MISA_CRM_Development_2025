@@ -8,9 +8,14 @@
 .icon-bg {
   background: url("@/assets/icons/ICON.svg");
   background-repeat: no-repeat;
+  background-color: transparent;
 }
 
 /* Icon size utilities */
+.icon-10 {
+  width: 10px;
+  height: 10px;
+}
 .icon-16 {
   width: 16px;
   height: 16px;
@@ -35,100 +40,89 @@
   width: 24px;
   height: 24px;
 }
+.icon-38 {
+  width: 38px;
+  height: 38px;
+}
+.icon-48 {
+  width: 48px;
+  height: 48px;
+}
 
 .icon-dashboard {
   background-position: 0px -272px;
-  background-color: transparent;
 }
 
 .icon-dashboard-active {
   background-position: 0px -288px;
-  background-color: transparent;
 }
 
 .icon-customer {
   background-position: -112px -48px;
-  background-color: transparent;
 }
 
 .icon-customer-active {
   background-position: -224px -288px;
-  background-color: transparent;
 }
 
 .icon-opportunity {
   background-position: -80px -48px;
-  background-color: transparent;
 }
 
 .icon-opportunity-active {
   background-position: -160px -304px;
-  background-color: transparent;
 }
 
 .icon-quote {
   background-position: -64px -48px;
-  background-color: transparent;
 }
 
 .icon-quote-active {
   background-position: -176px -304px;
-  background-color: transparent;
 }
 
 .icon-sale-order {
   background-position: -144px -48px;
-  background-color: transparent;
 }
 
 .icon-sale-order-active {
   background-position: -160px -240px;
-  background-color: transparent;
 }
 
 .icon-product {
   background-position: -16px -48px;
-  background-color: transparent;
 }
 
 .icon-product-active {
   background-position: -144px -240px;
-  background-color: transparent;
 }
 
 .icon-report {
   background-position: -32px -272px;
-  background-color: transparent;
 }
 
 .icon-report-active {
   background-position: -32px -288px;
-  background-color: transparent;
 }
 
 .icon-other {
   background-position: -48px -272px;
-  background-color: transparent;
 }
 
 .icon-folder {
   background-position: -208px -177px;
-  background-color: transparent;
 }
 
 .icon-dropdown {
   background-position: -48px -32px;
-  background-color: transparent;
 }
 
 .icon-refresh {
   background-position: -352px -32px;
-  background-color: transparent;
 }
 
 .icon-ai-search {
   background-position: 0px -1425px;
-  background-color: transparent;
 }
 
 .icon-ai {
@@ -138,25 +132,64 @@
 
 .icon-statistic {
   background-position: -16px -1425px;
-  background-color: transparent;
 }
 
 .icon-add {
   background-position: -240px -128px;
-  background-color: transparent;
 }
 
 .icon-import {
   background-position: -176px -192px;
-  background-color: transparent;
 }
 
 .icon-more {
   background-position: -48px 0;
-  background-color: transparent;
 }
 
 .icon-menu {
   background-position: -128px -304px;
-  background-color: transparent;
+}
+
+.icon-edit {
+  background-position: -128px 0px;
+}
+
+.icon-delete {
+  background-position: -192px -129px;
+}
+
+.icon-start-page {
+  background-position: -112px -224px;
+}
+
+.icon-end-page {
+  background-position: -128px -224px;
+}
+
+.icon-prev {
+  background-position: -288px -32px;
+}
+
+.icon-next {
+  background-position: -304px -32px;
+}
+
+.icon-setting {
+  background-position: -272px -176px;
+}
+
+.icon-close {
+  background-position: -67px -19px;
+}
+
+.icon-upload-file {
+  background-position: -233px -1274px;
+}
+
+.icon-select-type {
+  background-position: -288px -708px;
+}
+
+.icon-calendar {
+  background-position: -96px -64px;
 }

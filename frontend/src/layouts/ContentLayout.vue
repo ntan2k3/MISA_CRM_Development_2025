@@ -11,6 +11,7 @@ import { RouterView } from "vue-router";
 <style scoped>
 .content {
   width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #e2e4e9;
 }

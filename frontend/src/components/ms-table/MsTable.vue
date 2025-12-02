@@ -1,5 +1,5 @@
 <script setup>
-import { formatNumber, formatDate, formatText } from '@/utils/formatter'
+import { formatNumber, formatDate, formatText } from "@/utils/formatter";
 
 //#region Props
 defineProps({
@@ -8,20 +8,20 @@ defineProps({
     required: true,
     validator: (value) => {
       return value.every((field) => {
-        const validTypes = ['text', 'number', 'date', 'custom']
-        return field.key && field.label && validTypes.includes(field.type || 'text')
-      })
+        const validTypes = ["text", "number", "date", "custom"];
+        return field.key && field.label && validTypes.includes(field.type || "text");
+      });
     },
   },
   rows: {
     type: Array,
     required: true,
   },
-})
+});
 //#endregion
 
 //#region Emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits(["edit", "delete"]);
 //#endregion
 
 //#region Methods
@@ -34,16 +34,16 @@ const emit = defineEmits(['edit', 'delete'])
  */
 const handleFormat = (value, type) => {
   switch (type) {
-    case 'number':
-      return formatNumber(value)
-    case 'date':
-      return formatDate(value)
-    case 'text':
-      return formatText(value)
+    case "number":
+      return formatNumber(value);
+    case "date":
+      return formatDate(value);
+    case "text":
+      return formatText(value);
     default:
-      return formatText(value)
+      return formatText(value);
   }
-}
+};
 
 /**
  * Hàm xử lý sửa bản ghi
@@ -51,128 +51,249 @@ const handleFormat = (value, type) => {
  * createdby: pdthien - 15.10.2025
  */
 const handleEdit = (row) => {
-  emit('edit', row)
-}
+  emit("edit", row);
+};
 
 /**
  * Hàm xử lý xóa bản ghi
  * @param row
  * createdby: pdthien - 15.10.2025
  */
-const handleDelete = (row) => {
-  emit('delete', row)
-}
+// const handleDelete = (row) => {
+//   emit("delete", row);
+// };
 //#endregion
 </script>
 
 <template>
-  <div class="ms-table">
-    <table>
-      <thead>
-        <tr>
-          <th v-for="field in fields" :key="field.key">{{ field.label }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(row, rowIndex) in rows" :key="rowIndex" class="table-row">
-          <td v-for="field in fields" :key="field.key">
-            <!-- Custom type with slot -->
-            <template v-if="field.type === 'custom'">
-              <slot :name="field.key" :row="row" :field="field" :value="row[field.key]">
-                {{ handleFormat(row[field.key], 'text') }}
-              </slot>
-            </template>
+  <div class="ms-table__container flex-col flex-1">
+    <div class="ms-table flex-1">
+      <table>
+        <thead class="ms-table__head">
+          <tr class="ms-table__row">
+            <th class="ms-table__cell ms-table__cell--checkbox">
+              <input type="checkbox" class="ms-table__checkbox" />
+            </th>
 
-            <!-- Other types -->
-            <template v-else>
-              {{ handleFormat(row[field.key], field.type || 'text') }}
-            </template>
-          </td>
-          <!-- Floating action buttons -->
-          <div class="action-buttons">
-            <button @click="handleEdit(row)" class="edit-btn">Edit</button>
-            <button @click="handleDelete(row)" class="delete-btn">Delete</button>
-          </div>
-        </tr>
-      </tbody>
-    </table>
+            <th v-for="field in fields" :key="field.key" class="ms-table__cell">
+              {{ field.label }}
+            </th>
+          </tr>
+        </thead>
+
+        <tbody class="ms-table__body">
+          <tr
+            v-for="(row, rowIndex) in rows"
+            :key="rowIndex"
+            class="ms-table__row"
+            @click="handleEdit(row)"
+          >
+            <td class="ms-table__cell ms-table__cell--checkbox" @click.stop>
+              <input type="checkbox" class="ms-table__checkbox" />
+            </td>
+
+            <td v-for="field in fields" :key="field.key" class="ms-table__cell">
+              <template v-if="field.type === 'custom'">
+                <slot :name="field.key" :row="row" :field="field" :value="row[field.key]">
+                  {{ handleFormat(row[field.key], "text") }}
+                </slot>
+              </template>
+
+              <template v-else>
+                {{ handleFormat(row[field.key], field.type || "text") }}
+              </template>
+            </td>
+
+            <!-- <td class="ms-table__actions">
+              <button
+                @click="handleEdit(row)"
+                class="ms-table__btn ms-table__btn--edit flex-center"
+              >
+                <div class="icon-bg icon-edit icon-16"></div>
+              </button>
+              <button
+                @click="handleDelete(row)"
+                class="ms-table__btn ms-table__btn--delete flex-center"
+              >
+                <div class="icon-bg icon-delete icon-16"></div>
+              </button>
+            </td> -->
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.ms-table {
+.ms-table__container {
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ms-table {
   overflow-x: auto;
-  position: relative;
+  overflow-y: auto;
+  min-height: 0;
+  background-color: white;
+}
+
+.ms-table::-webkit-scrollbar {
+  width: 11px; /* chiều rộng scrollbar */
+  height: 11px; /* nếu scroll ngang */
+}
+
+.ms-table::-webkit-scrollbar-track {
+  background: #f0f2f4; /* màu track */
+  border-radius: 8px;
+  padding: 2px; /* padding giữa track và thumb */
+}
+
+.ms-table::-webkit-scrollbar-thumb {
+  background-color: #c1c4cd; /* màu thumb mặc định */
+  border-radius: 8px;
+  border: 3px solid #f0f2f4;
+}
+
+.ms-table::-webkit-scrollbar-thumb:hover {
+  background-color: #7c869c; /* màu khi hover */
 }
 
 table {
   width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-th,
-td {
-  padding: 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
+/* head */
+.ms-table__head {
+  border: 1px solid #e9e9e9;
+  table-layout: fixed;
 }
 
-th {
+/* th */
+.ms-table__head th {
+  background-color: #f0f2f4;
   font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
-.table-row {
+.ms-table__head th:first-child {
+  z-index: 30;
+}
+
+/* body */
+.ms-table__body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* tr */
+.ms-table__row {
+  height: 40px;
+  background: white;
   position: relative;
 }
 
-.table-row:hover {
-  background-color: #f5f5f5;
-  color: black;
+.ms-table__row:hover {
+  background: #f0f2f4;
+  cursor: pointer;
 }
 
-.table-row:hover .action-buttons {
-  opacity: 1;
-  pointer-events: auto;
+.ms-table__row:first-child {
+  background: #e7ebfd;
 }
 
-.action-buttons {
+.ms-table__row:first-child:hover {
+  background: #d0d8fb;
+}
+
+/* td */
+.ms-table__cell {
+  font-size: 13px;
+  padding: 0.75rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cột checkbox cố định */
+.ms-table__cell--checkbox {
+  position: sticky;
+  left: 0;
+  width: 28px;
+  z-index: 10;
+  background-color: inherit;
+  padding: 0.5rem;
+  padding-left: 12px;
+  padding-right: 4px;
+}
+
+.ms-table__checkbox {
+  position: relative;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #7c869c;
+  border-radius: 4px;
+  background-color: #fff;
+  outline: none;
+}
+
+/* khi checked */
+.ms-table__checkbox:checked {
+  background-color: #4262f0;
+  border-color: #4262f0;
+}
+
+.ms-table__checkbox:checked::after {
+  position: absolute;
+  content: "✔";
+  color: white;
+  font-size: 12px;
+  position: relative;
+  top: -1px;
+  left: 2px;
+}
+
+/* .ms-table__actions {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  gap: 0.5rem;
-  padding: 0 1rem;
+  gap: 8px;
+  padding-right: 16px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
-  background: linear-gradient(to left, #f5f5f5 70%, transparent);
 }
 
-.edit-btn,
-.delete-btn {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+.ms-table__row:hover .ms-table__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ms-table__btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: white;
   cursor: pointer;
-  z-index: 1;
+  padding: 6px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.edit-btn {
-  background-color: #4caf50;
-  color: white;
-  border: none;
-}
-
-.delete-btn {
-  background-color: #f44336;
-  color: white;
-  border: none;
-}
-
-.edit-btn:hover,
-.delete-btn:hover {
-  opacity: 0.9;
-}
+.ms-table__btn:hover {
+  background: #d3d7de;
+} */
 </style>

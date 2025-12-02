@@ -16,5 +16,6 @@ import ContentLayout from "@/layouts/ContentLayout.vue";
 .container {
   width: 100%;
   height: 100vh;
+  min-height: 0;
 }
 </style>

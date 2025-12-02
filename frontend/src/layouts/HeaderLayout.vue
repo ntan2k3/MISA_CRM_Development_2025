@@ -4,7 +4,7 @@ import { computed } from "vue";
 
 const menu = [
   { icon: "icon-dashboard", text: "Bàn làm việc", to: "/dashboard" },
-  { icon: "icon-customer", text: "Khách hàng", to: "/" },
+  { icon: "icon-customer", text: "Khách hàng", to: "/customers" },
   { icon: "icon-opportunity", text: "Cơ hội", to: "/opportunities" },
   { icon: "icon-quote", text: "Báo giá", to: "/quotes" },
   { icon: "icon-sale-order", text: "Đơn hàng", to: "/orders" },
@@ -16,7 +16,7 @@ const route = useRoute();
 const menuWithActive = computed(() =>
   menu.map((item) => ({
     ...item,
-    active: route.path === item.to,
+    active: route.path.includes(item.to),
   }))
 );
 </script>

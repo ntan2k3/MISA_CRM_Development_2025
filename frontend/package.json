@@ -13,6 +13,7 @@
     "lint": "eslint . --fix --cache"
   },
   "dependencies": {
+    "ant-design-vue": "^4.2.6",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3"
   },

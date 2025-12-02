@@ -13,6 +13,7 @@ defineProps({
   type: {
     type: String,
     default: "default",
+    validator: (value) => ["default", "primary", "secondary"].includes(value),
   },
   variant: {
     type: String,
@@ -64,20 +65,24 @@ defineProps({
 
 .ms-button--default.ms-button--solid {
   border: 1px solid white;
-  color: transparent;
+  color: black;
   background-color: white;
+}
+
+.ms-button--default.ms-button--solid:hover {
+  background-color: #f0f2f4;
 }
 
 .ms-button--default.ms-button--outlined {
   border: 1px solid white;
   color: white;
-  background-color: transparent;
+  background-color: black;
 }
 
 .ms-button--default.ms-button--dashed {
   border: 1px dashed white;
   color: white;
-  background-color: transparent;
+  background-color: black;
 }
 
 /* Primary */
@@ -88,10 +93,18 @@ defineProps({
   background-color: #4262f0;
 }
 
+.ms-button--primary.ms-button--solid:hover {
+  background-color: #2b4eee;
+}
+
 .ms-button--primary.ms-button--outlined {
   border: 1px solid #4262f0;
   color: #4262f0;
   background-color: white;
+}
+
+.ms-button--primary.ms-button--outlined:hover {
+  background-color: #e7ebfd;
 }
 
 .ms-button--primary.ms-button--dashed {
@@ -114,38 +127,14 @@ defineProps({
   background-color: white;
 }
 
+.ms-button--secondary.ms-button--outlined:hover {
+  background-color: #f0f2f4;
+}
+
 .ms-button--secondary.ms-button--dashed {
   border: 1px dashed #d3d7de;
   color: #d3d7de;
   background-color: white;
-}
-
-/* Warning */
-
-.ms-button--warning {
-}
-
-.ms-button--warning.ms-button--solid {
-}
-
-.ms-button--warning.ms-button--outlined {
-}
-
-.ms-button--warning.ms-button--dashed {
-}
-
-/* Danger */
-
-.ms-button--danger {
-}
-
-.ms-button--danger.ms-button--solid {
-}
-
-.ms-button--danger.ms-button--outlined {
-}
-
-.ms-button--danger.ms-button--dashed {
 }
 
 .ms-button__content {
