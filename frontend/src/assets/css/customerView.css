@@ -1,0 +1,316 @@
+.customer-view {
+  height: 100%;
+  min-height: 0;
+}
+
+.customer-view__header {
+  height: 56px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.header-toolbar {
+  padding: 0 16px;
+}
+
+.select {
+  background: #fff;
+  border: 1px solid #d3d7de;
+  padding-right: 8px;
+  padding-left: 12px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.link-icon-container {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.edit-link {
+  color: #4262f0;
+  margin-left: 16px;
+  cursor: pointer;
+}
+
+.edit-link:hover {
+  text-decoration: underline;
+}
+
+.refresh-link {
+  width: 24px;
+  height: 24px;
+  padding-top: 4px;
+  margin-left: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.refresh-link:hover {
+  background-color: #c5c9d3;
+}
+
+.toolbar-right {
+  gap: 8px;
+}
+
+.ai-search-container {
+  position: relative;
+  width: 284px;
+  height: 32px;
+  padding: 1px;
+  border-radius: 4px;
+}
+
+.ai-search-input {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  font-size: 13px;
+  outline: none;
+  border: none;
+  border-radius: 3px;
+  padding: 0 16px 0 32px;
+  background: linear-gradient(90deg, rgba(66, 98, 240, 0.1) 0%, rgba(159, 115, 241, 0.1) 100%), #fff;
+  text-overflow: ellipsis;
+}
+
+.ai-search-input::placeholder {
+  background: linear-gradient(109deg, #4262f0 24.05%, #9f73f1 71.93%);
+  -webkit-background-clip: text;
+  color: transparent;
+  font-weight: 400;
+}
+
+.icon-ai-search {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+}
+
+.icon-ai {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+
+.statistic-container {
+  position: relative;
+  height: 32px;
+  padding: 1px;
+  border-radius: 4px;
+}
+
+.statistic-btn {
+  position: relative;
+  height: 100%;
+  padding: 0 7px;
+  font-weight: 500;
+  border: none;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #e7ebfd 0%, #ece7fd 32.21%, #e5f7ff 66.11%, #fdefe7 100%);
+  cursor: pointer;
+}
+
+.ai-search-container::before,
+.statistic-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(251deg, #4262f0 24.05%, #9f73f1 71.93%);
+  border-radius: 4px;
+}
+
+.group-btn {
+  gap: 8px;
+}
+
+.add-btn,
+.import-btn {
+  padding-right: 16px !important;
+}
+
+.more-btn {
+  width: 36px !important;
+}
+
+.switch-view-btn {
+  width: 55px !important;
+  padding: 7px !important;
+}
+
+.scrollable-content {
+  min-height: 0;
+  overflow: auto;
+}
+
+.customer-view__pagination {
+  position: sticky;
+  bottom: 0;
+  height: 56px;
+  background: white;
+  border-top: 1px solid #d3d7de;
+  padding: 8px 16px;
+  font-size: 13px;
+  z-index: 20;
+}
+
+.pagination-setting {
+  height: 24px;
+  width: 24px;
+  padding: 4px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.pagination-setting:hover {
+  background-color: #f0f2f4;
+}
+
+.pagination-summary {
+  gap: 8px;
+  color: #586074;
+}
+
+.summary-records {
+  height: 39px;
+  padding: 0 16px;
+  gap: 32px;
+}
+
+.summary__item b {
+  font-weight: 700;
+  color: #1f2229;
+}
+
+.pagination-pagesize {
+  min-width: 182px;
+  cursor: pointer;
+}
+
+.pagination-content {
+  border: 1px solid #d3d7de;
+  border-radius: 4px;
+  padding: 0 8px 0 16px;
+  min-height: 32px;
+}
+
+.pageSize-select {
+  width: 100%;
+}
+
+.pagination-pager {
+  margin-left: 16px;
+}
+
+.pagination-btn {
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  opacity: 0.45;
+}
+
+.pagination-btn.active {
+  border-radius: 50%;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.pagination-btn.active:hover {
+  background-color: #f0f2f4;
+}
+
+.pagination-current {
+  padding: 4px;
+  gap: 8px;
+  color: #586074;
+}
+
+.pagination-current b {
+  min-width: 16px;
+  text-align: center;
+}
+
+.modal-import {
+  width: 500px !important;
+  height: 200px !important;
+}
+
+.file-box {
+  position: relative;
+  height: 200px;
+  width: 100%;
+  background-color: #f4f8ff;
+  border: 1px dashed #005eff;
+  border-radius: 8px;
+}
+
+.file-success {
+  position: relative;
+  height: 180px;
+  width: 100%;
+  background-color: white;
+  border: 1px solid #31b491;
+  border-radius: 8px;
+}
+
+.file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.text-description {
+  text-align: center;
+  font-size: 13px;
+}
+
+.text-description p {
+  margin: 4px 0;
+}
+
+.group-btn {
+  align-self: end;
+  justify-content: end;
+  gap: 8px;
+}
+
+.cancel-btn,
+.save-btn,
+.export-btn,
+.delete-btn,
+.assign-btn {
+  padding: 8px 16px !important;
+}
+
+/* Override màu background cho notification success */
+.ant-notification-notice-success {
+  background-color: #e6fffb;
+  border-left: 4px solid #31b491;
+}
+
+/* Override màu background cho notification error */
+.ant-notification-notice-error {
+  background-color: #fff1f0;
+  border-left: 4px solid #ff4d4f;
+}
+
+/* Thay đổi text */
+.ant-notification-notice-message {
+  font-family: Intern, sans-serif;
+  font-weight: 600;
+  color: #333;
+}
+.ant-notification-notice-description {
+  color: #555;
+}

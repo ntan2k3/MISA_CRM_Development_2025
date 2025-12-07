@@ -68,6 +68,10 @@
   gap: 4px;
 }
 
+.gap-8 {
+  gap: 8px;
+}
+
 /* Display: none */
 .hidden {
   display: none;

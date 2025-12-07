@@ -5,10 +5,14 @@ export default class BaseAPI {
     this.controller = null;
   }
   /**
-   * Phương thức lấy tất cả dữ liệu
+   * Phương thức lấy tất cả dữ liệu có query
+   * @param {*} query
+   * @return
    */
-  getAll() {
-    return api.get(`${this.controller}`);
+  getAll(query = {}) {
+    return api.get(`${this.controller}`, {
+      params: query,
+    });
   }
 
   /**
@@ -33,7 +37,7 @@ export default class BaseAPI {
    * @param {*} body
    */
   update(id, body) {
-    return api.update(`${this.controller}/update/${id}`, body);
+    return api.put(`${this.controller}/${id}`, body);
   }
 
   /**

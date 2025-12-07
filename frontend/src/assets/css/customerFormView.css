@@ -1,0 +1,154 @@
+/* Header */
+.customer-header {
+  height: 56px;
+  width: 100%;
+}
+.customer-toolbar {
+  padding: 0 16px;
+}
+.toolbar-title {
+  font-size: 20px;
+  margin-right: 8px;
+  font-weight: 500;
+}
+.toolbar-select {
+  margin-right: 8px;
+  font-weight: 500;
+  color: #1f2229;
+  cursor: pointer;
+  padding: 5px 0 0 8px;
+  gap: 8px;
+}
+.toolbar-layout {
+  font-size: 13px;
+  padding-top: 6px;
+  color: #4262f0;
+  cursor: pointer;
+}
+.toolbar-layout:hover {
+  text-decoration: underline;
+  text-decoration-color: #4262f0;
+}
+.toolbar-buttons {
+  gap: 8px;
+}
+.btn-cancel {
+  border: 1px solid #d3d7de !important;
+}
+.btn-cancel,
+.btn-save-add,
+.btn-save {
+  padding: 5px 16px !important;
+  transition: 0.3s all ease-in-out;
+}
+
+/* Content */
+.customer-content {
+  padding-top: 32px;
+  background-color: white;
+}
+
+/* Image Section */
+.form-section-image {
+  margin-bottom: 40px;
+  padding-left: 56px;
+}
+.form-title-image {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+.form-avatar {
+  position: relative;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  background: url("@/assets/icons/ICON.svg");
+  background-repeat: no-repeat;
+  background-position: 0 -848px;
+  cursor: pointer;
+}
+.input-upload-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+.avatar-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.form-avatar:hover {
+  background-position: -48px -848px;
+}
+
+/* Form Info */
+
+.form-header {
+  max-width: 1420px;
+  margin: 0 56px 8px;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 500;
+  color: #1f2229;
+}
+.form-body {
+  padding: 8px 56px;
+}
+.form-grid {
+  gap: 80px;
+  max-width: 1420px;
+}
+.form-col {
+  flex-basis: 50%;
+}
+.form-row {
+  margin: 4px 0;
+  width: 100%;
+  padding: 4px 0;
+  gap: 20px;
+}
+.form-label {
+  width: 140px;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.error-message {
+  min-height: 16px;
+  font-size: 12px;
+  color: red;
+  margin-top: 4px;
+}
+
+/* Override màu background cho notification success */
+.ant-notification-notice-success {
+  background-color: #e6fffb;
+  border-left: 4px solid #31b491;
+}
+
+/* Override màu background cho notification error */
+.ant-notification-notice-error {
+  background-color: #fff1f0;
+  border-left: 4px solid #ff4d4f;
+}
+
+/* Thay đổi text */
+.ant-notification-notice-message {
+  font-family: Intern, sans-serif;
+  font-weight: 600;
+  color: #333;
+}
+.ant-notification-notice-description {
+  color: #555;
+}

@@ -1,34 +1,131 @@
 <script setup>
+import dayjs from "dayjs";
+
 //#region Props
+/**
+ * Props cấu hình của input component
+ */
 defineProps({
+  /**
+   * Placeholder hiển thị
+   * @type {string}
+   */
   placeholder: String,
+
+  /**
+   * Loại input: text | date | select
+   * @type {string}
+   */
   type: {
     type: String,
     default: "text",
   },
+
+  /**
+   * Các lựa chọn cho select
+   * @type {Array}
+   */
   options: {
     type: Array,
     default: () => [],
   },
+
+  /**
+   * Trạng thái disabled
+   * @type {boolean}
+   */
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+
+  /**
+   * Icon custom hiển thị bên phải input/select/date
+   * @type {string|null}
+   */
+  icon: {
+    type: String,
+    default: null,
+  },
+
+  /**
+   * Cho phép clear giá trị (với date và select)
+   * @type {boolean}
+   */
+  allowClear: {
+    type: Boolean,
+    default: true,
+  },
+
+  /**
+   * Giá trị của input (v-model)
+   * @type {string|number|Date}
+   */
+  modelValue: [String, Number, Date],
 });
-//#endregion
+//#endregion Props
+
+//#region Emits
+/**
+ * Emits:
+ * - update:modelValue: cập nhật giá trị v-model
+ */
+const emit = defineEmits(["update:modelValue"]);
+//#endregion Emits
+
+//#region Methods
+/**
+ * Xử lý input của kiểu text
+ * @param {Event} e Sự kiện input
+ */
+const handleInput = (e) => {
+  emit("update:modelValue", e.target.value);
+};
+
+/**
+ * Xử lý change của select
+ * @param {*} value Giá trị được chọn
+ */
+const handleSelectChange = (value) => {
+  emit("update:modelValue", value);
+};
+
+/**
+ * Xử lý change của DatePicker
+ * @param {*} date Giá trị chọn (kiểu dayjs hoặc null)
+ */
+const handleDateChange = (date) => {
+  emit("update:modelValue", date ? date.toDate() : null);
+};
+//#endregion Methods
 </script>
 
 <template>
   <div class="ms-input flex-1">
     <!-- kiểu text -->
-    <input v-if="type === 'text'" type="text" :placeholder="placeholder" />
+    <input
+      v-if="type === 'text'"
+      type="text"
+      :placeholder="placeholder"
+      :value="modelValue"
+      @input="handleInput"
+      :disabled="disabled"
+      @blur="$emit('blur', $event)"
+    />
 
     <!-- kiểu date - dùng Antd DatePicker -->
     <a-date-picker
       v-else-if="type === 'date'"
       :placeholder="placeholder"
       class="ms-input-date"
-      allowClear
+      :allowClear="allowClear"
       format="DD/MM/YYYY"
+      :value="modelValue ? dayjs(modelValue) : null"
+      @change="handleDateChange"
+      @blur="$emit('blur', $event)"
     >
       <template #suffixIcon>
-        <div class="icon-bg icon-calendar icon-16"></div>
+        <div :class="icon"></div>
       </template>
     </a-date-picker>
 
@@ -38,10 +135,13 @@ defineProps({
       class="ms-input-select"
       :placeholder="placeholder"
       :options="options"
-      allowClear
+      :allowClear="allowClear"
+      :value="modelValue"
+      @change="handleSelectChange"
+      @blur="$emit('blur', $event)"
     >
       <template #suffixIcon>
-        <div class="icon-bg icon-select-type icon-16"></div>
+        <div :class="icon"></div>
       </template>
     </a-select>
   </div>
@@ -69,6 +169,19 @@ defineProps({
 
 .ms-input input::placeholder {
   color: #bfbfc9;
+}
+
+/* Text disabled */
+.ms-input input:disabled {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.ms-input input:disabled:hover,
+.ms-input input:disabled:focus {
+  border-color: #d9d9d9;
 }
 
 /* Focus input */
