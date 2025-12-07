@@ -1,0 +1,13 @@
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\bin\Debug\net8.0\MISA.CRM2025.Core.deps.json
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\bin\Debug\net8.0\MISA.CRM2025.Core.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\bin\Debug\net8.0\MISA.CRM2025.Core.pdb
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.GeneratedMSBuildEditorConfig.editorconfig
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.AssemblyInfoInputs.cache
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.AssemblyInfo.cs
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.csproj.CoreCompileInputs.cache
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.sourcelink.json
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\refint\MISA.CRM2025.Core.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.pdb
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\ref\MISA.CRM2025.Core.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Core\obj\Debug\net8.0\MISA.CRM2025.Core.csproj.AssemblyReference.cache

@@ -1,0 +1,16 @@
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\bin\Debug\net8.0\MISA.CRM2025.Infrastructure.deps.json
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\bin\Debug\net8.0\MISA.CRM2025.Infrastructure.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\bin\Debug\net8.0\MISA.CRM2025.Infrastructure.pdb
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\bin\Debug\net8.0\MISA.CRM2025.Core.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\bin\Debug\net8.0\MISA.CRM2025.Core.pdb
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.csproj.AssemblyReference.cache
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.AssemblyInfoInputs.cache
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.AssemblyInfo.cs
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.csproj.CoreCompileInputs.cache
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.sourcelink.json
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM.086E940C.Up2Date
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\refint\MISA.CRM2025.Infrastructure.dll
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\MISA.CRM2025.Infrastructure.pdb
+G:\Code\MISA.CRM2025\backend\MISA.CRM2025\MISA.CRM2025.Infrastructure\obj\Debug\net8.0\ref\MISA.CRM2025.Infrastructure.dll
