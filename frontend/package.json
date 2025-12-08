@@ -13,11 +13,13 @@
     "lint": "eslint . --fix --cache"
   },
   "dependencies": {
+    "@vee-validate/zod": "^4.15.1",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.13.2",
     "lodash": "^4.17.21",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.3"
+    "vue-router": "^4.6.3",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

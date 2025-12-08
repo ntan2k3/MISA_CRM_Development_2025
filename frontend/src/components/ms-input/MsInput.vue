@@ -111,6 +111,8 @@ const handleDateChange = (date) => {
       @input="handleInput"
       :disabled="disabled"
       @blur="$emit('blur', $event)"
+      maxlength="255"
+      minlength="1"
     />
 
     <!-- kiểu date - dùng Antd DatePicker -->
@@ -122,7 +124,6 @@ const handleDateChange = (date) => {
       format="DD/MM/YYYY"
       :value="modelValue ? dayjs(modelValue) : null"
       @change="handleDateChange"
-      @blur="$emit('blur', $event)"
     >
       <template #suffixIcon>
         <div :class="icon"></div>
@@ -138,7 +139,6 @@ const handleDateChange = (date) => {
       :allowClear="allowClear"
       :value="modelValue"
       @change="handleSelectChange"
-      @blur="$emit('blur', $event)"
     >
       <template #suffixIcon>
         <div :class="icon"></div>

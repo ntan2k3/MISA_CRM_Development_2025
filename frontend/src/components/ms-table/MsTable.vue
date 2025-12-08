@@ -169,8 +169,6 @@ const closeFilterModal = () => {
  * Áp dụng filter
  */
 const applyFilter = () => {
-  if (!selectedFilterValue.value) return;
-
   emit("applyFilter", {
     fieldKey: currentFilterField.value.key,
     value: selectedFilterValue.value,
@@ -280,6 +278,11 @@ watch(
           </tr>
         </tbody>
       </table>
+
+      <!-- Empty state -->
+      <div v-if="rows.length === 0" class="table-empty-overlay flex-col flex-center">
+        <div class="empty-text">Không có bản ghi nào</div>
+      </div>
     </a-spin>
 
     <!-- Filter Modal -->
@@ -305,10 +308,6 @@ watch(
 </template>
 
 <style scoped>
-.empty-container {
-  background-color: red;
-}
-
 .ms-table__container {
   width: 100%;
   height: 100%;
@@ -420,6 +419,12 @@ table {
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  opacity: 0;
+}
+
+.ms-table__head th:hover .filter-btn {
+  opacity: 1;
+  transition: opacity 0.2s;
 }
 
 .filter-btn:hover {
@@ -467,5 +472,22 @@ table {
   position: relative;
   top: -1px;
   left: 2px;
+}
+
+.table-empty-overlay {
+  position: absolute;
+  top: 200px; /* để chừa phần header nếu bạn muốn */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  z-index: 100;
+  opacity: 0.9;
+}
+
+.empty-text {
+  margin-top: 12px;
+  color: #7c869c;
+  font-size: 14px;
 }
 </style>

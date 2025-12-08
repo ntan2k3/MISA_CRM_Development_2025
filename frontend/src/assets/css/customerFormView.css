@@ -108,12 +108,14 @@
 .form-col {
   flex-basis: 50%;
 }
+
 .form-row {
   margin: 4px 0;
   width: 100%;
   padding: 4px 0;
   gap: 20px;
 }
+
 .form-label {
   width: 140px;
   font-size: 13px;
@@ -124,11 +126,17 @@
   text-overflow: ellipsis;
 }
 
-.error-message {
-  min-height: 16px;
-  font-size: 12px;
-  color: red;
-  margin-top: 4px;
+.input-field {
+  position: relative;
+}
+
+.error-msg {
+  position: absolute;
+  bottom: -16px;
+}
+
+.has-error-gap {
+  gap: 12px;
 }
 
 /* Override màu background cho notification success */

@@ -6,7 +6,7 @@ import MsModal from "@/components/ms-modal/MsModal.vue";
 import CustomersAPI from "@/apis/components/customers/CustomersAPI";
 import { Modal } from "ant-design-vue";
 
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { onMounted, ref, watch } from "vue";
 import { debounce } from "lodash";
 import { message } from "ant-design-vue";
@@ -17,6 +17,7 @@ import "@/assets/css/customerView.css";
 //#region Router
 // Khởi tạo router để điều hướng
 const router = useRouter();
+const route = useRoute();
 //#endregion
 
 //#region States
@@ -70,6 +71,7 @@ const fields = [
     width: "175px",
     filter: true,
     options: [
+      { key: "", value: "Tất cả" },
       { key: "VIP", value: "VIP" },
       { key: "LKHA", value: "LKHA" },
       { key: "NBH01", value: "NBH01" },
@@ -137,6 +139,8 @@ const handleFileChange = (e) => {
   if (file) {
     uploadedFile.value = file;
     uploadSuccess.value = true;
+
+    e.target.value = null;
   }
 };
 
@@ -152,17 +156,23 @@ const handleEdit = (id) => {
 };
 
 /** Áp dụng filter từ bảng */
-const handleApplyFilter = ({ fieldKey, value }) => {
-  filters.value[fieldKey] = value;
+const handleApplyFilter = async ({ fieldKey, value }) => {
+  if (value === "" || value == null) {
+    delete filters.value[fieldKey];
+  } else {
+    filters.value[fieldKey] = value;
+  }
   pageNumber.value = 1;
-  loadData();
 };
 
 /** Lấy tổng số bản ghi */
 const getTotalData = async () => {
   try {
-    const res = await CustomersAPI.getTotalData();
-    total.value = res.data;
+    const res = await CustomersAPI.getTotalData({
+      customerType: filters.value.customerType || undefined,
+      search: searchValue.value || undefined,
+    });
+    total.value = res.data.data;
   } catch (error) {
     console.error(error);
   }
@@ -178,7 +188,7 @@ const loadData = async () => {
       search: searchValue.value,
       sortBy: sortBy.value,
       sortDirection: sortDirection.value,
-      customerType: filters.value.customerType,
+      customerType: filters.value.customerType || undefined,
     });
     rows.value = res.data.data;
   } catch (error) {
@@ -193,8 +203,9 @@ const loadData = async () => {
 /** Xuất file CSV/Excel các bản ghi được chọn */
 const handleExportCsv = async (ids) => {
   try {
-    // Gọi API xuất CSV, yêu cầu axios trả về binary data (blob) thay vì JSON.
-    const res = await CustomersAPI.exportCsv(ids, { responseType: "blob" });
+    const res = await CustomersAPI.exportCsv(ids, {
+      responseType: "blob",
+    });
 
     // Lấy filename từ header nếu backend trả về
     const contentDisposition = res.headers["content-disposition"];
@@ -204,19 +215,18 @@ const handleExportCsv = async (ids) => {
       const match = contentDisposition.match(/filename="?(.+)"?/);
       if (match && match[1]) fileName = match[1];
     }
-    // Tạo một Blob object từ dữ liệu trả về. res.data là nội dung file ở dạng binary/blob.
-    const url = window.URL.createObjectURL(new Blob([res.data]));
 
-    // Tạo thẻ link để thực hiện hành vi download file
+    // Tạo URL tạm cho file blob
+    const url = window.URL.createObjectURL(new Blob([res.data]));
     const link = document.createElement("a");
 
     link.href = url;
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
+
     link.click();
     document.body.removeChild(link);
 
-    // Giải phóng object URL để tránh rò rỉ bộ nhớ.
     window.URL.revokeObjectURL(url);
 
     message.success("Xuất file thành công.");
@@ -240,11 +250,20 @@ const handleImportCsv = async () => {
 
   try {
     const res = await CustomersAPI.importCsv(formData);
+
     message.success(`${res.data.data}`);
+
+    // Đóng import modal
     closeImportModal();
+
+    // reset lại page và file
     pageNumber.value = 1;
     uploadedFile.value = null;
     uploadSuccess.value = false;
+
+    //load lại data
+    await loadData();
+    await getTotalData();
   } catch (error) {
     const err = error.response?.data?.error;
     if (err) message.error(err.message);
@@ -322,21 +341,72 @@ onMounted(() => {
   loadData();
   getTotalData();
 });
+
+onMounted(() => {
+  // Lấy query từ URL
+  const { search, page, size, sortBy: sBy, sortDirection: sDir, customerType } = route.query;
+
+  if (search) searchValue.value = search;
+  if (page) pageNumber.value = Number(page);
+  if (size) pageSize.value = Number(size);
+  if (sBy) sortBy.value = sBy;
+  if (sDir) sortDirection.value = sDir;
+  if (customerType) filters.value.customerType = customerType;
+
+  // Load dữ liệu
+  loadData();
+  getTotalData();
+});
+
 //#endregion
 
 //#region Watchers
+
+// Watch pageSize để reset pageNumber & loadData
 watch(pageSize, () => {
   pageNumber.value = 1;
   loadData();
 });
 
-watch([pageNumber, sortBy, sortDirection], () => {
+// Watch pageNumber, sortBy, sortDirection để loadData
+watch([pageNumber, sortBy, sortDirection, filters], () => {
   loadData();
 });
 
+// Watch searchValue để debounce
 watch(searchValue, () => {
   debouncedLoadData();
 });
+
+// Watch filter để loadData và getTotalData
+watch(
+  filters,
+  () => {
+    pageNumber.value = 1;
+    loadData();
+    getTotalData();
+  },
+  { deep: true }
+);
+
+// Đồng bộ URL với các state: search, filter, pagination, sort
+watch(
+  [searchValue, pageNumber, pageSize, sortBy, sortDirection, filters],
+  () => {
+    router.replace({
+      query: {
+        search: searchValue.value || undefined,
+        page: pageNumber.value !== 1 ? pageNumber.value : undefined,
+        size: pageSize.value !== 100 ? pageSize.value : undefined,
+        sortBy: sortBy.value || undefined,
+        sortDirection: sortDirection.value !== "asc" ? sortDirection.value : undefined,
+        customerType: filters.value.customerType || undefined,
+      },
+    });
+  },
+  { deep: true }
+);
+
 //#endregion
 </script>
 
@@ -481,7 +551,7 @@ watch(searchValue, () => {
           </div>
           <div class="summary__item flex-col">
             <span>Công nợ</span>
-            <b class="summary-debt">32.600.000</b>
+            <b class="summary-debt">0</b>
           </div>
         </div>
       </div>
@@ -516,7 +586,7 @@ watch(searchValue, () => {
           </div>
 
           <div class="pagination-current flex items-center">
-            <b class="count-to">{{ (pageNumber - 1) * pageSize + 1 }}</b>
+            <b class="count-to">{{ total && pageSize ? (pageNumber - 1) * pageSize + 1 : 0 }}</b>
             <span>đến</span>
             <b class="count-from">{{ Math.min(pageNumber * pageSize, total) }}</b>
           </div>
@@ -564,6 +634,18 @@ watch(searchValue, () => {
           <div class="text-description">
             <p style="color: #31b491">Tải file thành công!</p>
             <p>{{ uploadedFile.name }}</p>
+            <!-- Nút chọn lại file -->
+            <ms-button
+              variant="outlined"
+              @click="
+                () => {
+                  uploadedFile = null;
+                  uploadSuccess = false;
+                }
+              "
+            >
+              Chọn lại file
+            </ms-button>
           </div>
         </div>
       </div>

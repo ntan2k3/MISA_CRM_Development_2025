@@ -101,6 +101,11 @@ const isEdit = computed(
 
 // Tiêu đề form tùy theo mode
 const title = computed(() => (isEdit.value ? "Sửa Khách hàng" : "Thêm Khách hàng"));
+
+// Kiểm tra xem có lỗi nào tồn tại trong form hay không
+const hasError = computed(() => {
+  return Object.values(errors).some((err) => err && err.length > 0);
+});
 //#endregion
 
 //#region Methods
@@ -115,7 +120,8 @@ const handleCancel = () => {
  * @returns {boolean} True nếu hợp lệ, false nếu không
  */
 const validateField = async (field) => {
-  const value = formData[field]?.trim() || "";
+  const rawValue = formData[field];
+  const value = rawValue !== null && rawValue !== undefined ? String(rawValue).trim() : "";
   errors[field] = "";
 
   const rule = validationRules[field];
@@ -169,7 +175,14 @@ const handleSubmitForm = async (afterSuccess) => {
     if (isEdit.value) {
       // Cập nhật khách hàng
       const customerId = route.params.id;
-      await CustomersAPI.update(customerId, formData);
+      const res = await CustomersAPI.update(customerId, formData);
+      const data = res.data.data;
+
+      if (!data) {
+        message.error("Khách hàng cần cập nhật không tồn tại hoặc ở trong thùng rác.");
+        return;
+      }
+
       message.success("Cập nhật khách hàng thành công!");
       router.push("/customers/add");
     } else {
@@ -192,6 +205,11 @@ const handleSubmitForm = async (afterSuccess) => {
 const handleSaveAndAdd = () => {
   handleSubmitForm(() => {
     [...leftFields, ...rightFields].forEach((item) => (formData[item.model] = null));
+
+    // Reset avatar ở đây
+    imageUrl.value = null;
+    formData.customerAvatarUrl = null;
+
     getNewCustomerCode();
   });
 };
@@ -207,7 +225,7 @@ const handleSave = () => {
 const getNewCustomerCode = async () => {
   try {
     const res = await CustomersAPI.getNewCustomerCode();
-    formData.customerCode = res.data;
+    formData.customerCode = res.data.data;
   } catch (error) {
     const err = error.response?.data?.error;
     if (err) message.error(err.message);
@@ -223,6 +241,13 @@ const getCustomerById = async () => {
   isLoading.value = true;
   try {
     const res = await CustomersAPI.getById(customerId);
+    const data = res.data.data;
+    if (!data) {
+      message.error("Khách hàng không tồn tại hoặc ở trong thùng rác.");
+      return;
+    }
+
+    // Có thì gán cho formData để hiển thị lên các trường input
     Object.assign(formData, res.data.data);
 
     // Lấy URL avatar hiển thị
@@ -269,13 +294,8 @@ const uploadTempAvatar = async (e) => {
 //#endregion
 
 //#region Lifecycle Hooks
-// Khi component mount, lấy dữ liệu hoặc sinh mã mới
 onMounted(() => {
-  if (isEdit.value) {
-    getCustomerById();
-  } else {
-    getNewCustomerCode();
-  }
+  isEdit.value ? getCustomerById() : getNewCustomerCode();
 });
 //#endregion
 </script>
@@ -345,7 +365,7 @@ onMounted(() => {
           <div class="form-body">
             <div class="form-grid flex">
               <!-- Left Column -->
-              <div class="form-col">
+              <div class="form-col flex-col" :class="[hasError ? 'has-error-gap' : '']">
                 <div
                   v-for="item in leftFields"
                   class="form-row flex items-center justify-between"
@@ -354,7 +374,7 @@ onMounted(() => {
                   <div class="form-label" :title="item.label">
                     {{ item.label }} <span v-if="item.required" style="color: red">*</span>
                   </div>
-                  <div class="flex-1 flex-col gap-4">
+                  <div class="flex-1 flex-col gap-4 input-field">
                     <ms-input
                       :type="item.type"
                       :placeholder="item.placeholder || ''"
@@ -362,10 +382,14 @@ onMounted(() => {
                       v-model="formData[item.model]"
                       :disabled="item.disabled"
                       :icon="item.icon"
-                      @blur="async () => await validateField(item.model)"
-                      @input="() => errors[item.model] && validateField(item.model)"
+                      @blur="() => validateField(item.model)"
+                      @input="() => validateField(item.model)"
                     />
-                    <div v-if="errors[item.model]" style="color: red; font-size: 12px">
+                    <div
+                      v-if="errors[item.model]"
+                      class="error-msg"
+                      style="color: red; font-size: 12px"
+                    >
                       {{ errors[item.model] }}
                     </div>
                   </div>
@@ -373,7 +397,7 @@ onMounted(() => {
               </div>
 
               <!-- Right Column -->
-              <div class="form-col">
+              <div class="form-col flex-col" :class="[hasError ? 'has-error-gap' : '']">
                 <div
                   v-for="item in rightFields"
                   class="form-row flex items-center justify-between"
@@ -382,7 +406,7 @@ onMounted(() => {
                   <div class="form-label" :title="item.label">
                     {{ item.label }} <span v-if="item.required" style="color: red">*</span>
                   </div>
-                  <div class="flex-1 flex-col gap-4">
+                  <div class="flex-1 flex-col gap-4 input-field">
                     <ms-input
                       :type="item.type"
                       :placeholder="item.placeholder || ''"
@@ -390,10 +414,14 @@ onMounted(() => {
                       v-model="formData[item.model]"
                       :disabled="item.disabled"
                       :icon="item.icon"
-                      @blur="async () => await validateField(item.model)"
-                      @input="() => errors[item.model] && validateField(item.model)"
+                      @blur="() => validateField(item.model)"
+                      @input="() => validateField(item.model)"
                     />
-                    <div v-if="errors[item.model]" style="color: red; font-size: 12px">
+                    <div
+                      v-if="errors[item.model]"
+                      class="error-msg"
+                      style="color: red; font-size: 12px"
+                    >
                       {{ errors[item.model] }}
                     </div>
                   </div>

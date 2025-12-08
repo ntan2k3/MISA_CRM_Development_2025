@@ -74,9 +74,13 @@ defineProps({
 }
 
 .ms-button--default.ms-button--outlined {
-  border: 1px solid white;
-  color: white;
-  background-color: black;
+  border: 1px solid black;
+  color: black;
+  background-color: transparent;
+}
+
+.ms-button--default.ms-button--outlined:hover {
+  background-color: #f0f2f4;
 }
 
 .ms-button--default.ms-button--dashed {
