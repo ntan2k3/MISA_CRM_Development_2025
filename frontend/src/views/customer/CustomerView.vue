@@ -52,7 +52,7 @@ const sortBy = ref("");
 const sortDirection = ref("asc");
 
 // Lưu filter hiện tại
-const filters = ref({});
+const customerTypeFilter = ref("");
 
 //#endregion
 
@@ -61,7 +61,7 @@ const { pageSize, pageNumber, total, totalPages, nextPage, prevPage, startPage, 
   usePagination(100);
 //#endregion
 
-//#region Table & Pagination Variables
+//#region Table, customerTypeOptions & Pagination Variables
 // Cấu hình các cột cho bảng
 const fields = [
   {
@@ -69,18 +69,10 @@ const fields = [
     label: "Loại khách hàng",
     type: "text",
     width: "175px",
-    filter: true,
-    options: [
-      { key: "", value: "Tất cả" },
-      { key: "VIP", value: "VIP" },
-      { key: "LKHA", value: "LKHA" },
-      { key: "NBH01", value: "NBH01" },
-    ],
   },
   { key: "customerCode", label: "Mã khách hàng", type: "text", width: "150px" },
   { key: "customerName", label: "Tên khách hàng", type: "text", width: "300px" },
   { key: "customerTaxCode", label: "Mã số thuế", type: "text", width: "160px" },
-  { key: "customerAddr", label: "Địa chỉ (Giao hàng)", type: "text", width: "300px" },
   {
     key: "customerPhoneNumber",
     label: "Điện thoại",
@@ -89,6 +81,7 @@ const fields = [
     icon: "icon-bg icon-phone icon-16",
   },
   { key: "customerEmail", label: "Email", type: "text", width: "235px" },
+  { key: "customerAddr", label: "Địa chỉ (Giao hàng)", type: "text", width: "300px" },
   { key: "lastPurchaseDate", label: "Ngày mua hàng gần nhất", type: "date", width: "200px" },
   { key: "purchasedItemCode", label: "Hàng hóa đã mua", type: "text", width: "300px" },
   { key: "purchasedItemName", label: "Tên hàng hóa đã mua", type: "text", width: "300px" },
@@ -100,6 +93,14 @@ const pageSizeOptions = [
   { label: "20 Bản ghi trên trang", value: 20 },
   { label: "50 Bản ghi trên trang", value: 50 },
   { label: "100 Bản ghi trên trang", value: 100 },
+];
+
+// Các tùy chọn loại khách hàng
+const customerTypeOptions = [
+  { key: "", value: "Tất cả khách hàng" },
+  { key: "VIP", value: "VIP" },
+  { key: "LKHA", value: "LKHA" },
+  { key: "NBH01", value: "NBH01" },
 ];
 //#endregion
 
@@ -144,6 +145,15 @@ const handleFileChange = (e) => {
   }
 };
 
+/** chọn loại khách hàng */
+const handleSelectCustomerType = (type) => {
+  customerTypeFilter.value = type; // "" là tất cả
+
+  pageNumber.value = 1;
+  loadData();
+  getTotalData();
+};
+
 /** Chuyển sang view thêm khách hàng */
 const handleAdd = () => {
   router.push("/customers/add");
@@ -155,26 +165,16 @@ const handleEdit = (id) => {
   router.push({ name: "customer-edit", params: { id } });
 };
 
-/** Áp dụng filter từ bảng */
-const handleApplyFilter = async ({ fieldKey, value }) => {
-  if (value === "" || value == null) {
-    delete filters.value[fieldKey];
-  } else {
-    filters.value[fieldKey] = value;
-  }
-  pageNumber.value = 1;
-};
-
 /** Lấy tổng số bản ghi */
 const getTotalData = async () => {
   try {
     const res = await CustomersAPI.getTotalData({
-      customerType: filters.value.customerType || undefined,
+      customerType: customerTypeFilter.value || undefined,
       search: searchValue.value || undefined,
     });
     total.value = res.data.data;
   } catch (error) {
-    console.error(error);
+    console.error(error.response?.data?.error?.message || error);
   }
 };
 
@@ -188,13 +188,11 @@ const loadData = async () => {
       search: searchValue.value,
       sortBy: sortBy.value,
       sortDirection: sortDirection.value,
-      customerType: filters.value.customerType || undefined,
+      customerType: customerTypeFilter.value || undefined,
     });
     rows.value = res.data.data;
   } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Lỗi khi lấy dữ liệu");
+    message.error(error.response?.data?.error?.message || "Lỗi khi lấy dữ liệu", 2);
   } finally {
     loading.value = false;
   }
@@ -218,6 +216,8 @@ const handleExportCsv = async (ids) => {
 
     // Tạo URL tạm cho file blob
     const url = window.URL.createObjectURL(new Blob([res.data]));
+
+    // Tạo thẻ a để thực hiện việc download file
     const link = document.createElement("a");
 
     link.href = url;
@@ -229,18 +229,16 @@ const handleExportCsv = async (ids) => {
 
     window.URL.revokeObjectURL(url);
 
-    message.success("Xuất file thành công.");
+    message.success("Xuất file thành công.", 2);
   } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Lỗi khi xuất file.");
+    message.error(error.response?.data?.error?.message || "Lỗi khi xuất file.", 2);
   }
 };
 
 /** Import file CSV/Excel */
 const handleImportCsv = async () => {
   if (!uploadedFile.value) {
-    message.warning("Vui lòng tải lên file CSV trước khi gửi.");
+    message.warning("Vui lòng tải lên file CSV trước khi gửi.", 2);
     return;
   }
 
@@ -251,7 +249,13 @@ const handleImportCsv = async () => {
   try {
     const res = await CustomersAPI.importCsv(formData);
 
-    message.success(`${res.data.data}`);
+    // Lấy ra số bản ghi import thành công
+    const data = res.data.data;
+    if (!data) {
+      message.error("Không bản nào import thành công do trùng dữ liệu.", 2);
+      return;
+    }
+    message.success(`Import thành công ${data} bản ghi.`, 2);
 
     // Đóng import modal
     closeImportModal();
@@ -265,9 +269,7 @@ const handleImportCsv = async () => {
     await loadData();
     await getTotalData();
   } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Lỗi khi nhập file.");
+    message.error(error.response?.data?.error?.message || "Lỗi khi nhập file.", 2);
   } finally {
     loading.value = false;
   }
@@ -276,7 +278,7 @@ const handleImportCsv = async () => {
 /** Xóa mềm nhiều khách hàng cùng lúc */
 const handleSoftDeleteMany = (ids) => {
   if (selectedIds.value.length === 0) {
-    message.warning("Vui lòng chọn ít nhất một khách hàng.");
+    message.warning("Vui lòng chọn ít nhất một khách hàng.", 2);
     return;
   }
 
@@ -290,15 +292,22 @@ const handleSoftDeleteMany = (ids) => {
       loading.value = true;
       try {
         const res = await CustomersAPI.softDeleteMany(ids);
+
+        // Xóa xong thì gọi load lại data và số trang
         await loadData();
         await getTotalData();
+
+        // reset lại các ô checjked về rỗng và số lượng ô được checked về 0
         selectedIds.value = [];
         checkedCount.value = 0;
-        message.success(`${res.data.data}`);
+
+        // Trả ra thông báo xóa thành công
+        message.success(`${res.data.data}`, 2);
       } catch (error) {
-        const err = error.response?.data?.error;
-        if (err) message.error(err.message);
-        else message.error("Thao tác xóa hàng loạt thất bại.");
+        message.error(
+          error.response?.data?.error?.message || "Thao tác xóa hàng loạt thất bại.",
+          2
+        );
       } finally {
         loading.value = false;
       }
@@ -309,20 +318,23 @@ const handleSoftDeleteMany = (ids) => {
 /** Gắn loại khách hàng hàng loạt */
 const assignCustomerType = async () => {
   if (!selectedCustomerType.value) {
-    message.warning("Vui lòng chọn một loại khách hàng.");
+    message.warning("Vui lòng chọn một loại khách hàng.", 2);
     return;
   }
 
   loading.value = true;
   try {
     await CustomersAPI.assignCustomerType(selectedIds.value, selectedCustomerType.value);
-    message.success(`Gắn loại khách hàng thành công`);
+    message.success(`Gắn loại khách hàng thành công`, 2);
+
     closeAssignTypeModal();
+
+    selectedIds.value = [];
+    checkedCount.value = 0;
+
     loadData();
   } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Gắn loại khách hàng thất bại.");
+    message.error(error.response?.data?.error?.message || "Gắn loại khách hàng thất bại.", 2);
   } finally {
     loading.value = false;
   }
@@ -333,15 +345,10 @@ const debouncedLoadData = debounce(() => {
   pageNumber.value = 1;
   loadData();
   getTotalData();
-}, 500);
+}, 300);
 //#endregion
 
 //#region Lifecycle Hooks
-onMounted(() => {
-  loadData();
-  getTotalData();
-});
-
 onMounted(() => {
   // Lấy query từ URL
   const { search, page, size, sortBy: sBy, sortDirection: sDir, customerType } = route.query;
@@ -351,7 +358,7 @@ onMounted(() => {
   if (size) pageSize.value = Number(size);
   if (sBy) sortBy.value = sBy;
   if (sDir) sortDirection.value = sDir;
-  if (customerType) filters.value.customerType = customerType;
+  if (customerType) customerTypeFilter.value = customerType;
 
   // Load dữ liệu
   loadData();
@@ -363,13 +370,13 @@ onMounted(() => {
 //#region Watchers
 
 // Watch pageSize để reset pageNumber & loadData
-watch(pageSize, () => {
+watch([pageSize, sortBy, sortDirection], () => {
   pageNumber.value = 1;
   loadData();
 });
 
 // Watch pageNumber, sortBy, sortDirection để loadData
-watch([pageNumber, sortBy, sortDirection, filters], () => {
+watch(pageNumber, () => {
   loadData();
 });
 
@@ -380,7 +387,7 @@ watch(searchValue, () => {
 
 // Watch filter để loadData và getTotalData
 watch(
-  filters,
+  customerTypeFilter,
   () => {
     pageNumber.value = 1;
     loadData();
@@ -390,22 +397,18 @@ watch(
 );
 
 // Đồng bộ URL với các state: search, filter, pagination, sort
-watch(
-  [searchValue, pageNumber, pageSize, sortBy, sortDirection, filters],
-  () => {
-    router.replace({
-      query: {
-        search: searchValue.value || undefined,
-        page: pageNumber.value !== 1 ? pageNumber.value : undefined,
-        size: pageSize.value !== 100 ? pageSize.value : undefined,
-        sortBy: sortBy.value || undefined,
-        sortDirection: sortDirection.value !== "asc" ? sortDirection.value : undefined,
-        customerType: filters.value.customerType || undefined,
-      },
-    });
-  },
-  { deep: true }
-);
+watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFilter], () => {
+  router.replace({
+    query: {
+      search: searchValue.value || undefined,
+      page: pageNumber.value !== 1 ? pageNumber.value : undefined,
+      size: pageSize.value !== 100 ? pageSize.value : undefined,
+      sortBy: sortBy.value || undefined,
+      sortDirection: sortDirection.value !== "asc" ? sortDirection.value : undefined,
+      customerType: customerTypeFilter.value || undefined,
+    },
+  });
+});
 
 //#endregion
 </script>
@@ -418,11 +421,37 @@ watch(
         <!-- Left -->
         <div class="toolbar-left flex items-center">
           <!-- Select -->
-          <div class="select flex items-center">
-            <div class="icon-bg icon-folder icon-16"></div>
-            <div>Tất cả khách hàng</div>
-            <div class="icon-bg icon-dropdown icon-16"></div>
-          </div>
+          <a-dropdown placement="bottomLeft" trigger="click">
+            <div class="select flex items-center cursor-pointer">
+              <div class="icon-bg icon-folder icon-16"></div>
+              <div>
+                {{
+                  customerTypeFilter
+                    ? customerTypeOptions.find((o) => o.key === customerTypeFilter)?.value
+                    : "Tất cả khách hàng"
+                }}
+              </div>
+              <div class="icon-bg icon-dropdown icon-16"></div>
+            </div>
+
+            <template #overlay>
+              <a-menu @click="({ key }) => handleSelectCustomerType(key)">
+                <a-menu-item
+                  v-for="opt in customerTypeOptions"
+                  :key="opt.key"
+                  class="flex items-center justify-between"
+                >
+                  <div class="flex items-center justify-between">
+                    <span>{{ opt.value }}</span>
+
+                    <!-- ICON TICK -->
+                    <span v-if="customerTypeFilter === opt.key" style="color: #4caf50"> ✔ </span>
+                  </div>
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+
           <div class="link-icon-container flex items-center">
             <!-- Edit -->
             <div class="edit-link">Sửa</div>
@@ -431,11 +460,9 @@ watch(
               <div class="icon-bg icon-refresh icon-16"></div>
             </div>
           </div>
-        </div>
-        <!-- Right -->
-        <div v-if="checkedCount > 0" class="toolbar-right flex items-center">
+
           <!-- Button -->
-          <div class="group-btn flex">
+          <div v-if="checkedCount > 0" class="group-btn flex ml-8">
             <!-- Xóa -->
             <ms-button
               type="danger"
@@ -460,8 +487,8 @@ watch(
             >
           </div>
         </div>
-
-        <div v-else class="toolbar-right flex items-center">
+        <!-- Right -->
+        <div v-if="checkedCount == 0" class="toolbar-right flex items-center">
           <!-- Input -->
           <div class="ai-search-container">
             <div class="icon-bg icon-ai-search icon-16"></div>
@@ -473,12 +500,14 @@ watch(
             />
             <div class="icon-ai icon-16"></div>
           </div>
+
           <!-- Statistic -->
           <div class="statistic-container">
             <button class="statistic-btn flex items-center">
               <div class="icon-bg icon-statistic icon-16"></div>
             </button>
           </div>
+
           <!-- Button -->
           <div class="group-btn flex">
             <ms-button
@@ -529,7 +558,6 @@ watch(
         :sortDirection="sortDirection"
         @update:sortBy="sortBy = $event"
         @update:sortDirection="sortDirection = $event"
-        @applyFilter="handleApplyFilter"
         v-model:checkedItemCount="checkedCount"
         @selectionChange="handleSelectionChange"
         @edit="handleEdit"

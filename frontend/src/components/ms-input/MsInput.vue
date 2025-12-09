@@ -49,7 +49,7 @@ defineProps({
   },
 
   /**
-   * Cho phép clear giá trị (với date và select)
+   * Cho phép clear giá trị (select + date)
    * @type {boolean}
    */
   allowClear: {
@@ -62,6 +62,15 @@ defineProps({
    * @type {string|number|Date}
    */
   modelValue: [String, Number, Date],
+
+  /**
+   * Thuộc tính tabindex để điều khiển thứ tự focus khi Tab
+   * @type {number}
+   */
+  tabindex: {
+    type: Number,
+    default: 0,
+  },
 });
 //#endregion Props
 
@@ -70,7 +79,7 @@ defineProps({
  * Emits:
  * - update:modelValue: cập nhật giá trị v-model
  */
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "blur"]);
 //#endregion Emits
 
 //#region Methods
@@ -92,7 +101,7 @@ const handleSelectChange = (value) => {
 
 /**
  * Xử lý change của DatePicker
- * @param {*} date Giá trị chọn (kiểu dayjs hoặc null)
+ * @param {*} date Giá trị chọn (dayjs hoặc null)
  */
 const handleDateChange = (date) => {
   emit("update:modelValue", date ? date.toDate() : null);
@@ -107,6 +116,7 @@ const handleDateChange = (date) => {
       v-if="type === 'text'"
       type="text"
       :placeholder="placeholder"
+      :tabindex="tabindex"
       :value="modelValue"
       @input="handleInput"
       :disabled="disabled"
@@ -115,15 +125,17 @@ const handleDateChange = (date) => {
       minlength="1"
     />
 
-    <!-- kiểu date - dùng Antd DatePicker -->
+    <!-- date -->
     <a-date-picker
       v-else-if="type === 'date'"
       :placeholder="placeholder"
+      :tabindex="tabindex"
       class="ms-input-date"
       :allowClear="allowClear"
       format="DD/MM/YYYY"
       :value="modelValue ? dayjs(modelValue) : null"
       @change="handleDateChange"
+      @blur="$emit('blur', $event)"
     >
       <template #suffixIcon>
         <div :class="icon"></div>
@@ -135,10 +147,12 @@ const handleDateChange = (date) => {
       v-else-if="type === 'select'"
       class="ms-input-select"
       :placeholder="placeholder"
+      :tabindex="tabindex"
       :options="options"
       :allowClear="allowClear"
       :value="modelValue"
       @change="handleSelectChange"
+      @blur="$emit('blur', $event)"
     >
       <template #suffixIcon>
         <div :class="icon"></div>
@@ -171,7 +185,6 @@ const handleDateChange = (date) => {
   color: #bfbfc9;
 }
 
-/* Text disabled */
 .ms-input input:disabled {
   background: #f5f5f5;
   border-color: #d9d9d9;
@@ -179,12 +192,6 @@ const handleDateChange = (date) => {
   cursor: not-allowed;
 }
 
-.ms-input input:disabled:hover,
-.ms-input input:disabled:focus {
-  border-color: #d9d9d9;
-}
-
-/* Focus input */
 .ms-input input:focus {
   border-color: #4096ff;
 }
@@ -203,7 +210,6 @@ const handleDateChange = (date) => {
 
 .ms-input-date:focus-within {
   border-color: #4096ff;
-  box-shadow: none;
 }
 
 .ms-input-date:hover {
@@ -223,7 +229,6 @@ const handleDateChange = (date) => {
 }
 
 /* Select */
-
 .ms-input-select {
   width: 100%;
   height: 100%;

@@ -19,6 +19,24 @@ class CustomersAPI extends BaseAPI {
   }
 
   /**
+   * Kiểm tra email tồn tại không
+   * @param {*} body
+   * @returns
+   */
+  checkEmailExist(body) {
+    return api.post(`${this.controller}/check-email`, body);
+  }
+
+  /**
+   * Kiểm tra SĐT tồn tại không
+   * @param {*} body
+   * @returns
+   */
+  checkPhoneExist(body) {
+    return api.post(`${this.controller}/check-phone`, body);
+  }
+
+  /**
    * Xóa mềm hàng loạt bản ghi
    * @param {*} ids
    * @returns

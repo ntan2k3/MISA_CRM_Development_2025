@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch } from "vue";
 import { formatNumber, formatDate, formatText } from "@/utils/formatter";
-import MsModal from "@/components/ms-modal/MsModal.vue";
 
 //#region Props
 /**
@@ -44,6 +43,11 @@ const props = defineProps({
   },
 
   /**
+   * icon cho điện thoại
+   */
+  icon: String,
+
+  /**
    * Trạng thái loading
    */
   loading: Boolean,
@@ -61,9 +65,8 @@ const props = defineProps({
  * - edit: mở form sửa
  * - update:checkedItemCount: cập nhật số lượng tick
  * - selectionChange: gửi danh sách item được chọn
- * - applyFilter: áp dụng filter
  */
-const emit = defineEmits(["edit", "update:checkedItemCount", "selectionChange", "applyFilter"]);
+const emit = defineEmits(["edit", "update:checkedItemCount", "selectionChange"]);
 //#endregion Emits
 
 //#region State
@@ -72,15 +75,6 @@ const checkedIds = ref([]);
 
 /** Trạng thái checkbox "chọn tất cả" */
 const isCheckAll = ref(false);
-
-/** Trạng thái mở modal filter */
-const isFilterModalOpen = ref(false);
-
-/** Cột đang filter */
-const currentFilterField = ref(null);
-
-/** Giá trị filter được chọn */
-const selectedFilterValue = ref("");
 //#endregion State
 
 //#region Format Function
@@ -146,36 +140,6 @@ const handleSort = (fieldKey) => {
   emit("update:sortBy", fieldKey);
   emit("update:sortDirection", direction);
 };
-
-/**
- * Mở modal filter của một cột
- * @param {*} field Cột đang filter
- */
-const openFilterModal = (field) => {
-  currentFilterField.value = field;
-  selectedFilterValue.value = "";
-  isFilterModalOpen.value = true;
-};
-
-/**
- * Đóng modal filter
- */
-const closeFilterModal = () => {
-  isFilterModalOpen.value = false;
-  currentFilterField.value = null;
-};
-
-/**
- * Áp dụng filter
- */
-const applyFilter = () => {
-  emit("applyFilter", {
-    fieldKey: currentFilterField.value.key,
-    value: selectedFilterValue.value,
-  });
-
-  closeFilterModal();
-};
 //#endregion Methods
 
 //#region Watchers
@@ -238,15 +202,19 @@ watch(
               class="ms-table__cell ms-table__header"
               @click="handleSort(field.key)"
             >
-              {{ field.label }}
-
-              <!-- Nếu có filter thì hiện icon -->
-              <div
-                v-if="field.filter"
-                class="filter-btn flex-center"
-                @click.stop="openFilterModal(field)"
-              >
-                <div class="icon-filter icon-bg icon-16"></div>
+              <div class="header-content flex justify-between">
+                {{ field.label }}
+                <!-- Icon sort -->
+                <span class="sort-icon">
+                  <div
+                    v-if="props.sortBy === field.key"
+                    :class="{
+                      'icon-bg icon-sort-asc icon-16': props.sortDirection === 'asc',
+                      'icon-bg icon-sort-desc icon-16': props.sortDirection === 'desc',
+                    }"
+                  ></div>
+                  <div v-else class="icon-bg icon-sort-asc icon-16 default-arrow"></div>
+                </span>
               </div>
             </th>
           </tr>
@@ -273,7 +241,13 @@ watch(
               class="ms-table__cell"
               :title="row[field.key]"
             >
-              {{ handleFormat(row[field.key], field.type || "text") || "--" }}
+              <div v-if="field.icon" class="flex gap-4">
+                <div :class="field.icon"></div>
+                {{ handleFormat(row[field.key], field.type || "text") || "--" }}
+              </div>
+              <span v-else>
+                {{ handleFormat(row[field.key], field.type || "text") || "--" }}
+              </span>
             </td>
           </tr>
         </tbody>
@@ -284,26 +258,6 @@ watch(
         <div class="empty-text">Không có bản ghi nào</div>
       </div>
     </a-spin>
-
-    <!-- Filter Modal -->
-    <ms-modal
-      v-model:show="isFilterModalOpen"
-      :title="currentFilterField?.label || 'Filter'"
-      cancel-text="Hủy"
-      confirm-text="Áp dụng"
-      @confirm="applyFilter"
-    >
-      <div class="modal-body flex-col gap-8">
-        <label
-          v-for="option in currentFilterField?.options || []"
-          :key="option.key"
-          class="flex items-center gap-8"
-        >
-          <input type="radio" :value="option.key" v-model="selectedFilterValue" />
-          {{ option.value }}
-        </label>
-      </div>
-    </ms-modal>
   </div>
 </template>
 
@@ -472,6 +426,15 @@ table {
   position: relative;
   top: -1px;
   left: 2px;
+}
+
+.sort-icon {
+  opacity: 0;
+  transition: all 0.2s ease-in-out;
+}
+
+.ms-table__header:hover .sort-icon {
+  opacity: 1;
 }
 
 .table-empty-overlay {

@@ -131,32 +131,10 @@
 }
 
 .error-msg {
-  position: absolute;
-  bottom: -16px;
+  color: red;
+  font-size: 10px;
 }
 
 .has-error-gap {
   gap: 12px;
-}
-
-/* Override màu background cho notification success */
-.ant-notification-notice-success {
-  background-color: #e6fffb;
-  border-left: 4px solid #31b491;
-}
-
-/* Override màu background cho notification error */
-.ant-notification-notice-error {
-  background-color: #fff1f0;
-  border-left: 4px solid #ff4d4f;
-}
-
-/* Thay đổi text */
-.ant-notification-notice-message {
-  font-family: Intern, sans-serif;
-  font-weight: 600;
-  color: #333;
-}
-.ant-notification-notice-description {
-  color: #555;
 }

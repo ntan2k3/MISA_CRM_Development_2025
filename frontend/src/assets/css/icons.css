@@ -213,3 +213,11 @@
 .icon-filter {
   background-position: 0px -505px;
 }
+
+.icon-sort-asc {
+  background-position: -32px -32px;
+}
+
+.icon-sort-desc {
+  background-position: -48px -32px;
+}

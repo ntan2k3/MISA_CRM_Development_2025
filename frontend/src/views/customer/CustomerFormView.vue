@@ -16,7 +16,10 @@ const route = useRoute();
 //#endregion
 
 //#region Layout fields
-// Cấu hình các trường thông tin cột bên trái
+/**
+ * Cấu hình danh sách các input bên trái của form
+ * Mỗi object đại diện cho 1 ô input
+ */
 const leftFields = [
   { label: "Mã khách hàng", placeholder: "Mã tự sinh", model: "customerCode", disabled: true },
   { label: "Điện thoại", model: "customerPhoneNumber", required: true },
@@ -25,7 +28,10 @@ const leftFields = [
   { label: "Tên hàng hóa đã mua", model: "purchasedItemName" },
 ];
 
-// Cấu hình các trường thông tin cột bên phải
+/**
+ * Cấu hình danh sách các input bên phải của form
+ * Tương tự như leftFields nhưng có thêm select và date
+ */
 const rightFields = [
   { label: "Tên khách hàng", model: "customerName", required: true },
   { label: "Email", model: "customerEmail", required: true },
@@ -52,7 +58,12 @@ const rightFields = [
 //#endregion
 
 //#region Validation Rules
-// Cấu hình các rule validate cho form
+/**
+ * Cấu hình rule validate cho từng field:
+ * - required: bắt buộc nhập
+ * - pattern: regex định dạng hợp lệ
+ * - serverCheck: có cần check trùng trên server hay không
+ */
 const validationRules = {
   customerName: {
     required: "Tên khách hàng không được để trống",
@@ -60,7 +71,7 @@ const validationRules = {
   customerEmail: {
     required: "Email không được để trống",
     pattern: { regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Email không hợp lệ" },
-    serverCheck: true, // Kiểm tra tồn tại trên server
+    serverCheck: true,
   },
   customerPhoneNumber: {
     required: "Số điện thoại không được để trống",
@@ -68,90 +79,165 @@ const validationRules = {
       regex: /^0\d{9,10}$/,
       message: "Số điện thoại phải đúng định dạng và đủ 10 - 11 số",
     },
-    serverCheck: true, // Kiểm tra tồn tại trên server
+    serverCheck: true,
   },
 };
 //#endregion
 
 //#region States
-// Trạng thái loading
+/** Loading khi submit hoặc call API */
 const isLoading = ref(false);
 
-// URL hiển thị avatar
+/** Link ảnh avatar hiển thị */
 const imageUrl = ref(null);
 
-// Dữ liệu form
+/** Dữ liệu form chính */
 const formData = reactive({});
 
-// Dữ liệu lỗi từng field
+/** Lỗi validate cho từng field */
 const errors = reactive({});
 
-// Khởi tạo các field cho formData
-[...leftFields, ...rightFields].forEach((item) => (formData[item.model] = null));
+/** Khởi tạo value mặc định cho form và errors */
+[...leftFields, ...rightFields].forEach((item) => {
+  formData[item.model] = null;
+  errors[item.model] = "";
+});
 
-// Khởi tạo các field cho errors
-[...leftFields, ...rightFields].forEach((item) => (errors[item.model] = ""));
+/** Cache kết quả kiểm tra trùng server: tránh gọi API nhiều lần */
+const serverCheckCache = reactive({
+  customerEmail: { value: null, exists: false },
+  customerPhoneNumber: { value: null, exists: false },
+});
+
 //#endregion
 
 //#region Computed
-// Kiểm tra chế độ edit hay thêm mới
-const isEdit = computed(
-  () => route.name === "customer-edit" || route.path.includes("/customers/edit")
-);
-
-// Tiêu đề form tùy theo mode
+/**
+ * Kiểm tra đang ở chế độ sửa hay thêm mới
+ */
+const isEdit = computed(() => route.name === "customer-edit");
+/**
+ * Tiêu đề form dựa theo mode
+ */
 const title = computed(() => (isEdit.value ? "Sửa Khách hàng" : "Thêm Khách hàng"));
 
-// Kiểm tra xem có lỗi nào tồn tại trong form hay không
-const hasError = computed(() => {
-  return Object.values(errors).some((err) => err && err.length > 0);
+/**
+ * Kiểm tra xem form có lỗi nào không
+ */
+// const hasError = computed(() => {
+//   return Object.values(errors).some((err) => err && err.length > 0);
+// });
+
+/**
+ * Tính thứ tự tabindex hợp lý theo layout trái – phải
+ */
+const allFieldsInOrder = computed(() => {
+  const maxLen = Math.max(leftFields.length, rightFields.length);
+  const ordered = [];
+
+  for (let i = 0; i < maxLen; i++) {
+    if (leftFields[i]) ordered.push(leftFields[i]);
+    if (rightFields[i]) ordered.push(rightFields[i]);
+  }
+
+  return ordered;
 });
+
+/**
+ * Map: tên field -> tabindex tương ứng
+ */
+const tabindexMap = computed(() => {
+  const map = {};
+  allFieldsInOrder.value.forEach((f, index) => {
+    map[f.model] = index + 1;
+  });
+  return map;
+});
+
 //#endregion
 
 //#region Methods
-/** Hủy form -> quay về danh sách khách hàng */
+/**
+ * Điều hướng quay về danh sách khách hàng
+ */
 const handleCancel = () => {
   router.push("/customers");
 };
 
 /**
- * Validate một field cụ thể
- * @param {string} field Tên field cần validate
- * @returns {boolean} True nếu hợp lệ, false nếu không
+ * Validate 1 field (client + server)
+ * @param {string} field
+ * @param {boolean} checkExist - true: blur -> check server
  */
-const validateField = async (field) => {
+const validateField = async (field, checkExist = false) => {
+  // Lấy ra value và khởi tạo lỗi cho các trường input
   const rawValue = formData[field];
-  const value = rawValue !== null && rawValue !== undefined ? String(rawValue).trim() : "";
+  const value = rawValue ? String(rawValue).trim() : "";
   errors[field] = "";
 
+  // Lấy ra các rule của từng trường
   const rule = validationRules[field];
   if (!rule) return true;
 
-  // Kiểm tra required
+  // required
   if (rule.required && !value) {
     errors[field] = rule.required;
     return false;
   }
 
-  // Kiểm tra pattern
+  // pattern
   if (rule.pattern && value && !rule.pattern.regex.test(value)) {
     errors[field] = rule.pattern.message;
     return false;
   }
 
-  // Kiểm tra tồn tại trên server
+  // server check (email / phone)
   if (rule.serverCheck && value) {
-    try {
-      const res = await CustomersAPI.getAll({ search: value });
-      const list = Array.isArray(res.data.data) ? res.data.data : [];
-      const exists = list.some((item) => item.customerId !== route.params.id);
-      if (exists) {
+    // Không check server khi đang nhập -> chỉ check cache
+    if (!checkExist) {
+      if (serverCheckCache[field].value === value && serverCheckCache[field].exists) {
         errors[field] = field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
         return false;
       }
-    } catch {
-      errors[field] = `Lỗi khi kiểm tra ${field}`;
-      return false;
+      return true;
+    }
+
+    // blur -> gọi server khi:
+    // - giá trị thay đổi
+    // - cache chưa có
+    if (serverCheckCache[field].value !== value || serverCheckCache[field].exists === undefined) {
+      try {
+        let exists = false;
+
+        if (field === "customerEmail") {
+          const res = await CustomersAPI.checkEmailExist({ email: value, id: route.params.id });
+          exists = res.data.data;
+        } else if (field === "customerPhoneNumber") {
+          const res = await CustomersAPI.checkPhoneExist({
+            phoneNumber: value,
+            id: route.params.id,
+          });
+          exists = res.data.data;
+        }
+
+        // Lưu cache
+        serverCheckCache[field] = { value, exists };
+
+        if (exists) {
+          errors[field] =
+            field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
+          return false;
+        }
+      } catch {
+        errors[field] = `Lỗi khi kiểm tra ${field}`;
+        return false;
+      }
+    } else {
+      // Dùng cache nếu chưa đổi
+      if (serverCheckCache[field].exists) {
+        errors[field] = field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
+        return false;
+      }
     }
   }
 
@@ -159,16 +245,16 @@ const validateField = async (field) => {
 };
 
 /**
- * Gửi form chung
- * @param {Function} afterSuccess Hàm thực thi sau khi submit thành công
+ * Submit form chung cho cả thêm / sửa
+ * @param {Function} afterSuccess callback khi submit thành công
  */
 const handleSubmitForm = async (afterSuccess) => {
   isLoading.value = true;
 
   try {
-    const validName = await validateField("customerName");
-    const validEmail = await validateField("customerEmail");
-    const validPhone = await validateField("customerPhoneNumber");
+    const validName = await validateField("customerName", false);
+    const validEmail = await validateField("customerEmail", true);
+    const validPhone = await validateField("customerPhoneNumber", true);
 
     if (!validName || !validEmail || !validPhone) return;
 
@@ -179,29 +265,29 @@ const handleSubmitForm = async (afterSuccess) => {
       const data = res.data.data;
 
       if (!data) {
-        message.error("Khách hàng cần cập nhật không tồn tại hoặc ở trong thùng rác.");
+        message.error("Khách hàng cần cập nhật không tồn tại hoặc ở trong thùng rác.", 2);
         return;
       }
 
-      message.success("Cập nhật khách hàng thành công!");
+      message.success("Cập nhật khách hàng thành công!", 2);
       router.push("/customers/add");
     } else {
       // Thêm mới khách hàng
       await CustomersAPI.add(formData);
-      message.success("Thêm khách hàng thành công!");
+      message.success("Thêm khách hàng thành công!", 2);
     }
 
     if (typeof afterSuccess === "function") afterSuccess();
-  } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Lỗi khi gửi dữ liệu lên.");
+  } catch (err) {
+    message.error(err.response?.data?.error?.message || "Lỗi khi gửi dữ liệu", 2);
   } finally {
     isLoading.value = false;
   }
 };
 
-/** Xử lý lưu và thêm tiếp */
+/**
+ * Lưu và thêm tiếp
+ */
 const handleSaveAndAdd = () => {
   handleSubmitForm(() => {
     [...leftFields, ...rightFields].forEach((item) => (formData[item.model] = null));
@@ -214,26 +300,30 @@ const handleSaveAndAdd = () => {
   });
 };
 
-/** Xử lý lưu và quay về danh sách */
+/**
+ * Lưu và quay về danh sách
+ */
 const handleSave = () => {
   handleSubmitForm(() => {
     router.push("/customers");
   });
 };
 
-/** Lấy mã khách hàng mới từ server */
+/**
+ * Lấy mã khách hàng mới từ server
+ */
 const getNewCustomerCode = async () => {
   try {
     const res = await CustomersAPI.getNewCustomerCode();
     formData.customerCode = res.data.data;
-  } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Lỗi khi tạo mới mã khách hàng.");
+  } catch (err) {
+    message.error(err.response?.data?.error?.message || "Lỗi khi tạo mã khách hàng", 2);
   }
 };
 
-/** Lấy thông tin khách hàng theo ID */
+/**
+ * Lấy thông tin khách hàng theo ID khi sửa
+ */
 const getCustomerById = async () => {
   const customerId = route.params.id;
   if (!customerId) return;
@@ -243,7 +333,7 @@ const getCustomerById = async () => {
     const res = await CustomersAPI.getById(customerId);
     const data = res.data.data;
     if (!data) {
-      message.error("Khách hàng không tồn tại hoặc ở trong thùng rác.");
+      message.error("Khách hàng không tồn tại hoặc ở trong thùng rác.", 2);
       return;
     }
 
@@ -253,16 +343,16 @@ const getCustomerById = async () => {
     // Lấy URL avatar hiển thị
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
     imageUrl.value = formData.customerAvatarUrl ? baseUrl + formData.customerAvatarUrl : "";
-  } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Lỗi khi lấy dữ liệu khách hàng.");
+  } catch (err) {
+    message.error(err.response?.data?.error?.message || "Lỗi khi lấy dữ liệu khách hàng", 2);
   } finally {
     isLoading.value = false;
   }
 };
 
-/** Upload ảnh avatar tạm thời */
+/**
+ * Upload ảnh avatar tạm thời
+ */
 const uploadTempAvatar = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -275,16 +365,14 @@ const uploadTempAvatar = async (e) => {
   try {
     const res = await CustomersAPI.uploadTempAvatar(form);
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
-    const tempUrl = res.data?.tempAvatarUrl;
+    const tempUrl = res.data?.data;
 
     imageUrl.value = baseUrl + tempUrl;
     formData.customerAvatarUrl = tempUrl;
 
-    message.success("Tải ảnh lên thành công.");
-  } catch (error) {
-    const err = error.response?.data?.error;
-    if (err) message.error(err.message);
-    else message.error("Tải ảnh lên thất bại.");
+    message.success("Tải ảnh lên thành công.", 2);
+  } catch (err) {
+    message.error(err.response?.data?.error?.message || "Tải ảnh lên thất bại", 2);
   } finally {
     isLoading.value = false;
     e.target.value = "";
@@ -294,6 +382,12 @@ const uploadTempAvatar = async (e) => {
 //#endregion
 
 //#region Lifecycle Hooks
+
+/**
+ * On mounted:
+ * - Nếu sửa -> load customer theo id
+ * - Nếu thêm mới -> lấy mã khách hàng mới
+ */
 onMounted(() => {
   isEdit.value ? getCustomerById() : getNewCustomerCode();
 });
@@ -365,7 +459,7 @@ onMounted(() => {
           <div class="form-body">
             <div class="form-grid flex">
               <!-- Left Column -->
-              <div class="form-col flex-col" :class="[hasError ? 'has-error-gap' : '']">
+              <div class="form-col flex-col">
                 <div
                   v-for="item in leftFields"
                   class="form-row flex items-center justify-between"
@@ -382,14 +476,11 @@ onMounted(() => {
                       v-model="formData[item.model]"
                       :disabled="item.disabled"
                       :icon="item.icon"
-                      @blur="() => validateField(item.model)"
-                      @input="() => validateField(item.model)"
+                      :tabindex="tabindexMap[item.model]"
+                      @blur="() => validateField(item.model, true)"
+                      @input="() => validateField(item.model, false)"
                     />
-                    <div
-                      v-if="errors[item.model]"
-                      class="error-msg"
-                      style="color: red; font-size: 12px"
-                    >
+                    <div v-if="errors[item.model]" class="error-msg">
                       {{ errors[item.model] }}
                     </div>
                   </div>
@@ -397,7 +488,7 @@ onMounted(() => {
               </div>
 
               <!-- Right Column -->
-              <div class="form-col flex-col" :class="[hasError ? 'has-error-gap' : '']">
+              <div class="form-col flex-col">
                 <div
                   v-for="item in rightFields"
                   class="form-row flex items-center justify-between"
@@ -414,14 +505,11 @@ onMounted(() => {
                       v-model="formData[item.model]"
                       :disabled="item.disabled"
                       :icon="item.icon"
-                      @blur="() => validateField(item.model)"
-                      @input="() => validateField(item.model)"
+                      :tabindex="tabindexMap[item.model]"
+                      @blur="() => validateField(item.model, true)"
+                      @input="() => validateField(item.model, false)"
                     />
-                    <div
-                      v-if="errors[item.model]"
-                      class="error-msg"
-                      style="color: red; font-size: 12px"
-                    >
+                    <div v-if="errors[item.model]" class="error-msg">
                       {{ errors[item.model] }}
                     </div>
                   </div>
