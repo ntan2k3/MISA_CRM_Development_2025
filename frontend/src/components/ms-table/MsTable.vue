@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { formatNumber, formatDate, formatText } from "@/utils/formatter";
+import { debounce } from "lodash";
 
 //#region Props
 /**
@@ -39,7 +40,7 @@ const props = defineProps({
    */
   sortDirection: {
     type: String,
-    default: "asc",
+    default: "desc",
   },
 
   /**
@@ -56,6 +57,15 @@ const props = defineProps({
    * Số lượng items checked — nhận từ cha
    */
   checkedItemCount: Number,
+
+  /**
+   * Danh sách ID được chọn từ parent
+   * Nếu parent truyền prop này, component sẽ sync với nó
+   */
+  selectedIds: {
+    type: Array,
+    default: () => [],
+  },
 });
 //#endregion Props
 
@@ -65,17 +75,45 @@ const props = defineProps({
  * - edit: mở form sửa
  * - update:checkedItemCount: cập nhật số lượng tick
  * - selectionChange: gửi danh sách item được chọn
+ * - update:selectedIds: sync selectedIds với parent (hỗ trợ v-model:selectedIds)
+ * - update:sortBy: cập nhật cột đang sort
+ * - update:sortDirection: cập nhật chiều sort
  */
-const emit = defineEmits(["edit", "update:checkedItemCount", "selectionChange"]);
+const emit = defineEmits([
+  "edit",
+  "update:checkedItemCount",
+  "selectionChange",
+  "update:selectedIds",
+  "update:sortBy",
+  "update:sortDirection",
+]);
 //#endregion Emits
 
 //#region State
-/** Danh sách ID được tick */
+/** Danh sách ID được tick (internal state) */
 const checkedIds = ref([]);
 
 /** Trạng thái checkbox "chọn tất cả" */
 const isCheckAll = ref(false);
 //#endregion State
+
+//#region Computed
+/**
+ * Tạo Set để check ID nhanh hơn
+ * - Array.includes() có complexity O(n)
+ * - Set.has() có complexity O(1)
+ * - Với 1000 rows, cải thiện performance 1000 lần
+ */
+const checkedIdsSet = computed(() => new Set(checkedIds.value));
+
+/**
+ * Tính toán selected rows một lần
+ * Tránh filter lại mỗi lần emit
+ */
+const selectedRows = computed(() =>
+  props.rows.filter((r) => checkedIdsSet.value.has(r.customerId))
+);
+//#endregion Computed
 
 //#region Format Function
 /**
@@ -113,25 +151,27 @@ const toggleCheckAll = () => {
  * @param {string} rowId ID của dòng
  */
 const toggleRow = (rowId) => {
-  if (checkedIds.value.includes(rowId)) {
-    checkedIds.value = checkedIds.value.filter((id) => id !== rowId);
+  // Lấy ra id cột muốn bỏ chọn
+  const index = checkedIds.value.indexOf(rowId);
+  if (index > -1) {
+    checkedIds.value.splice(index, 1);
   } else {
     checkedIds.value.push(rowId);
   }
 };
 
 /**
- * Emit sự kiện chỉnh sửa
- * @param {*} row Bản ghi được double-click
+ * Emit sự kiện chỉnh sửa khi double-click vào row
+ * @param {Object} row Bản ghi được double-click
  */
 const handleEdit = (row) => emit("edit", row.customerId);
 
 /**
  * Sort một cột theo chiều asc/desc
- * @param {string} fieldKey Key của cột
+ * @param {string} fieldKey Key của cột cần sort
  */
 const handleSort = (fieldKey) => {
-  let direction = "asc";
+  let direction = "desc";
 
   if (props.sortBy === fieldKey) {
     direction = props.sortDirection === "asc" ? "desc" : "asc";
@@ -140,32 +180,110 @@ const handleSort = (fieldKey) => {
   emit("update:sortBy", fieldKey);
   emit("update:sortDirection", direction);
 };
+
+/**
+ * Method để clear toàn bộ selection
+ * Parent component có thể gọi method này qua ref
+ * @example tableRef.value?.clearSelection()
+ */
+const clearSelection = () => {
+  checkedIds.value = [];
+  isCheckAll.value = false;
+};
+
+/**
+ * Method để set selection từ bên ngoài
+ * @param {Array} ids Danh sách ID cần chọn
+ * @example tableRef.value?.setSelection(['id1', 'id2'])
+ */
+const setSelection = (ids) => {
+  checkedIds.value = [...ids];
+};
 //#endregion Methods
 
 //#region Watchers
 /**
- * Watch danh sách checkedIds:
- * - cập nhật trạng thái checkAll
- * - emit số lượng items được chọn
- * - emit danh sách rows được chọn
+ * Watch selectedIds từ parent để sync state
+ */
+watch(
+  () => props.selectedIds,
+  (newIds) => {
+    // Tạo set mới lưu danh sách checkedIds mới
+    const newSet = new Set(newIds);
+
+    const currentSet = checkedIdsSet.value;
+
+    // Chỉ update khi có sự khác biệt
+    if (newSet.size !== currentSet.size || ![...newSet].every((id) => currentSet.has(id))) {
+      checkedIds.value = [...newIds];
+    }
+  },
+  { deep: true, immediate: true }
+);
+
+/**
+ * Debounce emit để tránh emit quá nhiều
+ * Khi user chọn nhanh nhiều checkbox, chỉ emit 1 lần sau 50ms
+ */
+const emitSelection = debounce(() => {
+  emit("update:checkedItemCount", checkedIds.value.length);
+  emit("selectionChange", selectedRows.value);
+  emit("update:selectedIds", checkedIds.value);
+}, 50);
+
+/**
+ * Watch danh sách checkedIds để:
+ * - Cập nhật trạng thái checkAll
+ * - Emit số lượng items được chọn
+ * - Emit danh sách rows được chọn
+ * - Emit update:selectedIds để sync với parent (v-model)
  */
 watch(
   () => checkedIds.value,
   () => {
     const rowIds = props.rows.map((r) => r.customerId);
 
+    // Cập nhật trạng thái "chọn tất cả"
     isCheckAll.value = rowIds.length > 0 && rowIds.every((id) => checkedIds.value.includes(id));
 
-    emit("update:checkedItemCount", checkedIds.value.length);
-
-    emit(
-      "selectionChange",
-      props.rows.filter((r) => checkedIds.value.includes(r.customerId))
-    );
+    // Emit các events
+    emitSelection();
   },
   { deep: true }
 );
+
+/**
+ * Loại bỏ các ID không còn tồn tại
+ * Khi rows thay đổi (filter, search, pagination), tự động xóa các ID không hợp lệ
+ * Tránh lỗi khi user đã chọn row nhưng row đó bị filter ra khỏi danh sách
+ */
+watch(
+  () => props.rows,
+  (newRows) => {
+    const validIds = new Set(newRows.map((r) => r.customerId));
+    const filteredIds = checkedIds.value.filter((id) => validIds.has(id));
+
+    // Chỉ update nếu có ID không hợp lệ
+    if (filteredIds.length !== checkedIds.value.length) {
+      checkedIds.value = filteredIds;
+    }
+  }
+);
 //#endregion Watchers
+
+//#region Expose
+/**
+ * Expose methods để parent có thể gọi qua ref
+ * @example
+ * const tableRef = ref(null);
+ * tableRef.value?.clearSelection();
+ * tableRef.value?.setSelection(['id1', 'id2']);
+ */
+defineExpose({
+  clearSelection,
+  setSelection,
+});
+//#endregion Expose
 </script>
 
 <template>
@@ -231,7 +349,7 @@ watch(
               <input
                 type="checkbox"
                 class="ms-table__checkbox"
-                :checked="checkedIds.includes(row.customerId)"
+                :checked="checkedIdsSet.has(row.customerId)"
                 @change="() => toggleRow(row.customerId)"
               />
             </td>
@@ -241,7 +359,7 @@ watch(
               class="ms-table__cell"
               :title="row[field.key]"
             >
-              <div v-if="field.icon" class="flex gap-4">
+              <div v-if="field.icon" class="flex items-center gap-4">
                 <div :class="field.icon"></div>
                 {{ handleFormat(row[field.key], field.type || "text") || "--" }}
               </div>
@@ -277,24 +395,24 @@ watch(
 }
 
 .ms-table::-webkit-scrollbar {
-  width: 11px; /* chiều rộng scrollbar */
-  height: 11px; /* nếu scroll ngang */
+  width: 11px;
+  height: 11px;
 }
 
 .ms-table::-webkit-scrollbar-track {
-  background: #f0f2f4; /* màu track */
+  background: #f0f2f4;
   border-radius: 8px;
-  padding: 2px; /* padding giữa track và thumb */
+  padding: 2px;
 }
 
 .ms-table::-webkit-scrollbar-thumb {
-  background-color: #c1c4cd; /* màu thumb mặc định */
+  background-color: #c1c4cd;
   border-radius: 8px;
   border: 3px solid #f0f2f4;
 }
 
 .ms-table::-webkit-scrollbar-thumb:hover {
-  background-color: #7c869c; /* màu khi hover */
+  background-color: #7c869c;
 }
 
 table {
@@ -304,13 +422,11 @@ table {
   table-layout: fixed;
 }
 
-/* head */
 .ms-table__head {
   border: 1px solid #e9e9e9;
   table-layout: fixed;
 }
 
-/* th */
 .ms-table__head th {
   background-color: #f0f2f4;
   font-weight: 600;
@@ -327,13 +443,11 @@ table {
   z-index: 30;
 }
 
-/* body */
 .ms-table__body {
   min-height: 0;
   overflow-y: auto;
 }
 
-/* tr */
 .ms-table__row {
   position: relative;
   height: 40px;
@@ -353,7 +467,6 @@ table {
   background: #d0d8fb;
 }
 
-/* td */
 .ms-table__cell {
   position: relative;
   font-size: 13px;
@@ -385,7 +498,6 @@ table {
   background-color: #c5c5c5;
 }
 
-/* Cột checkbox cố định */
 .ms-table__cell--checkbox {
   position: sticky;
   left: 0;
@@ -412,7 +524,6 @@ table {
   outline: none;
 }
 
-/* khi checked */
 .ms-table__checkbox:checked {
   background-color: #4262f0;
   border-color: #4262f0;
@@ -439,7 +550,7 @@ table {
 
 .table-empty-overlay {
   position: absolute;
-  top: 200px; /* để chừa phần header nếu bạn muốn */
+  top: 200px;
   left: 0;
   right: 0;
   bottom: 0;

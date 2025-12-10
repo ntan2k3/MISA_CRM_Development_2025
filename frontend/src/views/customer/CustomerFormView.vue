@@ -3,8 +3,8 @@ import MsButton from "@/components/ms-button/MsButton.vue";
 import MsInput from "@/components/ms-input/MsInput.vue";
 
 import CustomersAPI from "@/apis/components/customers/CustomersAPI";
-import { useRouter, useRoute } from "vue-router";
 import { ref, computed, reactive, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { message } from "ant-design-vue";
 
 import "@/assets/css/customerFormView.css";
@@ -120,13 +120,6 @@ const isEdit = computed(() => route.name === "customer-edit");
  * Tiêu đề form dựa theo mode
  */
 const title = computed(() => (isEdit.value ? "Sửa Khách hàng" : "Thêm Khách hàng"));
-
-/**
- * Kiểm tra xem form có lỗi nào không
- */
-// const hasError = computed(() => {
-//   return Object.values(errors).some((err) => err && err.length > 0);
-// });
 
 /**
  * Tính thứ tự tabindex hợp lý theo layout trái – phải

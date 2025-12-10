@@ -7,10 +7,10 @@ import CustomersAPI from "@/apis/components/customers/CustomersAPI";
 import { Modal } from "ant-design-vue";
 
 import { useRouter, useRoute } from "vue-router";
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { debounce } from "lodash";
 import { message } from "ant-design-vue";
-import { usePagination } from "@/utils/hooks/usePagination.js";
+import { usePagination } from "@/utils/composables/usePagination.js";
 
 import "@/assets/css/customerView.css";
 
@@ -18,6 +18,29 @@ import "@/assets/css/customerView.css";
 // Khởi tạo router để điều hướng
 const router = useRouter();
 const route = useRoute();
+//#endregion
+
+//#region Computed
+/**
+ * Cache label loại khách hàng đang lọc hiện tại
+ * Tránh phải find trong array mỗi lần render
+ */
+const currentCustomerTypeLabel = computed(() => {
+  if (!customerTypeFilter.value) return "Tất cả khách hàng";
+  return (
+    customerTypeOptions.find((o) => o.key === customerTypeFilter.value)?.value ||
+    "Tất cả khách hàng"
+  );
+});
+
+/**
+ * Tính toán thông tin pagination
+ * Tránh tính toán lại mỗi lần render
+ */
+const paginationInfo = computed(() => ({
+  from: total.value && pageSize.value ? (pageNumber.value - 1) * pageSize.value + 1 : 0,
+  to: Math.min(pageNumber.value * pageSize.value, total.value),
+}));
 //#endregion
 
 //#region States
@@ -35,9 +58,6 @@ const selectedCustomerType = ref("");
 const uploadedFile = ref(null);
 const uploadSuccess = ref(false);
 
-// Giá trị tìm kiếm
-const searchValue = ref("");
-
 // Danh sách ID các row đã chọn
 const selectedIds = ref([]);
 
@@ -47,12 +67,18 @@ const checkedCount = ref(0);
 // Danh sách dữ liệu bảng
 const rows = ref([]);
 
+// Giá trị tìm kiếm
+const searchValue = ref("");
+
 // Sắp xếp
-const sortBy = ref("");
-const sortDirection = ref("asc");
+const sortBy = ref("createdDate");
+const sortDirection = ref("desc");
 
 // Lưu filter hiện tại
 const customerTypeFilter = ref("");
+
+// Ref để truy cập MsTable
+const tableRef = ref(null);
 
 //#endregion
 
@@ -61,7 +87,7 @@ const { pageSize, pageNumber, total, totalPages, nextPage, prevPage, startPage, 
   usePagination(100);
 //#endregion
 
-//#region Table, customerTypeOptions & Pagination Variables
+//#region Table, customerTypeOptions
 // Cấu hình các cột cho bảng
 const fields = [
   {
@@ -145,15 +171,6 @@ const handleFileChange = (e) => {
   }
 };
 
-/** chọn loại khách hàng */
-const handleSelectCustomerType = (type) => {
-  customerTypeFilter.value = type; // "" là tất cả
-
-  pageNumber.value = 1;
-  loadData();
-  getTotalData();
-};
-
 /** Chuyển sang view thêm khách hàng */
 const handleAdd = () => {
   router.push("/customers/add");
@@ -190,7 +207,10 @@ const loadData = async () => {
       sortDirection: sortDirection.value,
       customerType: customerTypeFilter.value || undefined,
     });
-    rows.value = res.data.data;
+
+    const data = res.data.data;
+
+    rows.value = data;
   } catch (error) {
     message.error(error.response?.data?.error?.message || "Lỗi khi lấy dữ liệu", 2);
   } finally {
@@ -228,6 +248,9 @@ const handleExportCsv = async (ids) => {
     document.body.removeChild(link);
 
     window.URL.revokeObjectURL(url);
+
+    // clear checkbox
+    tableRef.value?.clearSelection();
 
     message.success("Xuất file thành công.", 2);
   } catch (error) {
@@ -275,6 +298,15 @@ const handleImportCsv = async () => {
   }
 };
 
+/** chọn loại khách hàng */
+const handleSelectCustomerType = (type) => {
+  customerTypeFilter.value = type; // "" là tất cả
+
+  pageNumber.value = 1;
+  loadData();
+  getTotalData();
+};
+
 /** Xóa mềm nhiều khách hàng cùng lúc */
 const handleSoftDeleteMany = (ids) => {
   if (selectedIds.value.length === 0) {
@@ -316,7 +348,7 @@ const handleSoftDeleteMany = (ids) => {
 };
 
 /** Gắn loại khách hàng hàng loạt */
-const assignCustomerType = async () => {
+const handleAssignCustomerType = async () => {
   if (!selectedCustomerType.value) {
     message.warning("Vui lòng chọn một loại khách hàng.", 2);
     return;
@@ -329,10 +361,10 @@ const assignCustomerType = async () => {
 
     closeAssignTypeModal();
 
-    selectedIds.value = [];
-    checkedCount.value = 0;
+    // clear checkbox
+    tableRef.value?.clearSelection();
 
-    loadData();
+    await loadData();
   } catch (error) {
     message.error(error.response?.data?.error?.message || "Gắn loại khách hàng thất bại.", 2);
   } finally {
@@ -425,11 +457,7 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
             <div class="select flex items-center cursor-pointer">
               <div class="icon-bg icon-folder icon-16"></div>
               <div>
-                {{
-                  customerTypeFilter
-                    ? customerTypeOptions.find((o) => o.key === customerTypeFilter)?.value
-                    : "Tất cả khách hàng"
-                }}
+                {{ currentCustomerTypeLabel }}
               </div>
               <div class="icon-bg icon-dropdown icon-16"></div>
             </div>
@@ -552,6 +580,7 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
     <!-- Content - Table -->
     <div class="customer-view__content flex-col flex-1 scrollable-content">
       <ms-table
+        ref="tableRef"
         :fields="fields"
         :rows="rows"
         :sortBy="sortBy"
@@ -614,9 +643,9 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
           </div>
 
           <div class="pagination-current flex items-center">
-            <b class="count-to">{{ total && pageSize ? (pageNumber - 1) * pageSize + 1 : 0 }}</b>
+            <b class="count-to">{{ paginationInfo.from }}</b>
             <span>đến</span>
-            <b class="count-from">{{ Math.min(pageNumber * pageSize, total) }}</b>
+            <b class="count-from">{{ paginationInfo.to }}</b>
           </div>
 
           <div
@@ -685,7 +714,7 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
       title="Gắn loại khách hàng"
       cancel-text="Hủy"
       confirm-text="Áp dụng"
-      @confirm="assignCustomerType"
+      @confirm="handleAssignCustomerType"
     >
       <div class="modal-body flex-col gap-4">
         <label v-for="type in ['VIP', 'NBH01', 'LKHA']" :key="type" class="flex items-center gap-8">
