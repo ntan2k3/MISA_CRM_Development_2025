@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.DTOs.Requests
+﻿namespace MISA.CRM2025.Core.DTOs.Requests
 {
     /// <summary>
-    /// DTO nhận thông số query từ client để phân trang, tìm kiếm, lọc, sắp xếp
+    /// DTO nhận thông số query từ client để phân trang, tìm kiếm, lọc, và sắp xếp danh sách khách hàng.
+    /// <para/>Mục đích:
+    /// - Chuẩn hóa các tham số đầu vào từ client khi gọi API lấy danh sách khách hàng.
+    /// - Hỗ trợ phân trang, tìm kiếm theo từ khóa, lọc theo loại khách hàng, và sắp xếp dữ liệu.
+    /// <para/>Ngữ cảnh sử dụng:
+    /// - Sử dụng trong API GetCustomers hoặc các API trả về danh sách khách hàng có phân trang.
     /// </summary>
+    /// Created by: nguyentruongan - 06/12/2025
     public class CustomerQueryParameters
     {
         #region Property
@@ -26,7 +26,7 @@ namespace MISA.CRM2025.Core.DTOs.Requests
         /// <summary>
         /// Từ khóa tìm kiếm (tên, số điện thoại, email)
         /// </summary>
-        public string? Search { get; set; } 
+        public string? Search { get; set; }
 
         /// <summary>
         /// Sắp xếp theo trường
@@ -34,7 +34,7 @@ namespace MISA.CRM2025.Core.DTOs.Requests
         public string? SortBy { get; set; } 
 
         /// <summary>
-        /// Chiều sắp xếp (Giảm dần hoặc tăng dần)
+        /// Chiều sắp xếp (Giảm dần hoặc tăng dần) 
         /// </summary>
         public string? SortDirection { get; set; }
 

@@ -1,120 +1,115 @@
 ﻿using Microsoft.AspNetCore.Http;
 using MISA.CRM2025.Core.DTOs.Requests;
-using MISA.CRM2025.Core.DTOs.Responses;
 using MISA.CRM2025.Core.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MISA.CRM2025.Core.Interfaces.Services
 {
     /// <summary>
-    /// Service riêng cho Customer
-    /// Thêm các phương thức xử lý nghiệp vụ đặc thù
+    /// Service nghiệp vụ dành riêng cho thực thể Customer.
+    /// <para/>Mục đích: Định nghĩa các hành vi xử lý nghiệp vụ đặc thù cho khách hàng,
+    /// mở rộng từ BaseService.
+    /// <para/>Ngữ cảnh sử dụng: Tầng Business Logic, được gọi từ CustomerController
+    /// hoặc các service khác khi thao tác với khách hàng.
+    /// <list type="bullet">
+    /// <item>GenerateCustomerCode(): Tự động sinh mã khách hàng.</item>
+    /// <item>GetCustomersPagingAsync(): Lấy danh sách khách hàng có phân trang + tìm kiếm.</item>
+    /// <item>ExportCsvAsync(): Xuất danh sách khách hàng ra CSV.</item>
+    /// <item>ImportCsvAsync(): Nhập dữ liệu từ file CSV.</item>
+    /// <item>IsEmailExistAsync(): Kiểm tra trùng email.</item>
+    /// <item>IsPhoneNumberExistAsync(): Kiểm tra trùng số điện thoại.</item>
+    /// </list>
     /// </summary>
-    /// Created by: nguyentruongan - 03/12/2025
     public interface ICustomerService : IBaseService<Customer, CustomerRequest>
     {
         /// <summary>
-        /// Check định dạng email
+        /// Sinh mã khách hàng tự động theo quy tắc.
+        /// <para/>Ngữ cảnh sử dụng: Khi tạo mới khách hàng, hệ thống cần sinh mã
+        /// định danh có format chuẩn (ví dụ: KH202512000123).
         /// </summary>
-        /// <param name="email"></param>
-        /// <returns></returns>
-        /// Created by: nguyentruongan - 04/12/2025
-        bool IsValidEmail(string email);
-
-        /// <summary>
-        /// Check định dạng số điện thoại
-        /// </summary>
-        /// <param name="phone"></param>
-        /// <returns></returns>
-        /// Created by: nguyentruongan - 04/12/2025
-        bool IsValidPhone(string phone);
-
-        /// <summary>
-        /// Validate dữ liệu khi Insert/Update
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="dto"></param>
-        /// <returns>Trả về các lỗi</returns>
-        /// Created by: nguyentruongan - 04/12/2025
-        Task ValidateCustomerAsync(Guid? id, CustomerRequest dto);
-
-        /// <summary>
-        /// Dùng để tự động sinh mã khách hàng
-        /// </summary>
-        /// <returns>Mã khách hàng</returns>
-        /// Created by: nguyentruongan - 04/12/2025
+        /// <returns>Mã khách hàng mới dưới dạng chuỗi.</returns>
         Task<string> GenerateCustomerCode();
 
         /// <summary>
-        /// Lấy danh sách khách hàng theo phân trang, có hỗ trợ tìm kiếm và lọc.
+        /// Lấy danh sách khách hàng có phân trang, tìm kiếm và sắp xếp.
+        /// <para/>Ngữ cảnh sử dụng: Trang danh sách khách hàng, lọc dữ liệu, phân trang.</para>
         /// </summary>
         /// <param name="query">
-        /// Đối tượng CustomerQueryParameters chứa các tham số truy vấn:
-        /// - Page: trang hiện tại muốn lấy
-        /// - PageSize: số bản ghi trên mỗi trang
-        /// - Search: từ khóa tìm kiếm (tên, email, số điện thoại,...)
-        /// - SortBy: sắp xép theo trường
-        /// - SortDirection: sắp xếp theo chiều giảm dần hoặc tăng dần
-        /// - Filter: lọc theo trường
+        /// Tham số truy vấn gồm:
+        /// - Page: Trang hiện tại.
+        /// - PageSize: Số bản ghi mỗi trang.
+        /// - Search: Từ khóa tìm kiếm.
+        /// - SortBy: Trường sắp xếp.
+        /// - SortDirection: Chiều sắp xếp (ASC/DESC).
+        /// - CustomerType: Lọc theo loại khách hàng.
         /// </param>
-        /// <returns>
-        /// Trả về một Task với tuple gồm:
-        /// - Data: danh sách khách hàng theo trang yêu cầu
-        /// </returns>
-        /// Created by: nguyentruongan - 04/12/2025
+        /// <returns>Danh sách khách hàng phù hợp theo trang.</returns>
         Task<IEnumerable<Customer>> GetCustomersPagingAsync(CustomerQueryParameters query);
 
         /// <summary>
-        /// Lấy ra tổng số bản ghi theo query 
+        /// Lấy tổng số bản ghi theo điều kiện truy vấn.
+        /// <para/>Ngữ cảnh sử dụng: Tính tổng số trang cho phân trang.</para>
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns>
-        /// tổng số khách hàng thỏa mãn điều kiện truy vấn
-        /// </returns>
-        /// Created by: nguyentruongan - 04/12/2025
+        /// <param name="query">Tham số truy vấn cùng format với paging.</param>
+        /// <returns>Tổng số bản ghi thỏa mãn điều kiện.</returns>
         Task<int> GetTotalCountAsync(CustomerQueryParameters query);
 
         /// <summary>
-        /// Export theo danh sách khách hàng được chọn
+        /// Export danh sách khách hàng ra file CSV dựa vào danh sách Id.
+        /// <para/>Ngữ cảnh sử dụng: Tính năng Export CSV trên UI.</para>
         /// </summary>
-        /// <param name="ids"></param>
-        /// <returns></returns>
-        /// Created by: nguyentruongan - 04/12/2025
+        /// <param name="ids">Danh sách Id khách hàng được chọn.</param>
+        /// <returns>File CSV dạng mảng byte.</returns>
         Task<byte[]> ExportCsvAsync(List<Guid> ids);
 
         /// <summary>
-        /// Nhập file csv
+        /// Import dữ liệu khách hàng từ file CSV.
+        /// <para/>Ngữ cảnh sử dụng: Upload file CSV trên UI để import dữ liệu hàng loạt.</para>
         /// </summary>
-        /// <param name="csvStream"></param>
-        /// <returns></returns>
-        /// Created by: nguyentruongan - 04/12/2025
+        /// <param name="csvStream">Stream của file CSV upload từ client.</param>
+        /// <returns>Số lượng bản ghi được import thành công.</returns>
         Task<int> ImportCsvAsync(Stream csvStream);
 
         /// <summary>
-        /// Upload ảnh tạm để preview
+        /// Upload ảnh tạm để preview trước khi lưu chính thức.
+        /// <para/>Ngữ cảnh sử dụng: Khi người dùng chọn ảnh đại diện trong form thông tin khách hàng.</para>
         /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
+        /// <param name="file">File ảnh được upload.</param>
+        /// <returns>Đường dẫn ảnh tạm thời.</returns>
         Task<string> UploadTempAvatarAsync(IFormFile file);
 
         /// <summary>
-        /// Xóa hàng loạt khách hàng
+        /// Xóa mềm nhiều khách hàng cùng lúc.
+        /// <para/>Ngữ cảnh sử dụng: Chức năng xóa hàng loạt trong bảng danh sách.</para>
         /// </summary>
-        /// <param name="ids"></param>
-        /// <returns></returns>
+        /// <param name="ids">Danh sách Id khách hàng cần xóa.</param>
+        /// <returns>Số bản ghi đã xóa.</returns>
         Task<int> SoftDeleteManyAsync(List<Guid> ids);
 
         /// <summary>
-        /// Gán hàng loạt loại khách hàng cho các khách hàng được chọn
+        /// Gán loại khách hàng cho nhiều khách hàng được chọn.
+        /// <para/>Ngữ cảnh sử dụng: Thao tác bulk update trên giao diện danh sách.</para>
         /// </summary>
-        /// <param name="ids">Danh sách CustomerId cần gán</param>
-        /// <param name="customerTypeId">Id loại khách hàng muốn gán</param>
-        /// <returns>Số lượng bản ghi đã cập nhật thành công</returns>
-        /// Created by: nguyentruongan - 06/12/2025
+        /// <param name="ids">Danh sách Id khách hàng.</param>
+        /// <param name="customerType">Loại khách hàng cần gán.</param>
+        /// <returns>Số bản ghi cập nhật thành công.</returns>
         Task<int> AssignCustomerTypeAsync(List<Guid> ids, string customerType);
+
+        /// <summary>
+        /// Kiểm tra email có bị trùng hay không.
+        /// <para/>Ngữ cảnh sử dụng: Validate trước khi thêm/sửa khách hàng.</para>
+        /// </summary>
+        /// <param name="email">Email cần kiểm tra.</param>
+        /// <param name="id">Id khách hàng đang sửa (null nếu thêm mới).</param>
+        /// <returns>True nếu trùng, False nếu hợp lệ.</returns>
+        Task<bool> IsEmailExistAsync(string email, Guid? id = null);
+
+        /// <summary>
+        /// Kiểm tra số điện thoại có bị trùng hay không.
+        /// <para/>Ngữ cảnh sử dụng: Validate trước khi thêm/sửa khách hàng.</para>
+        /// </summary>
+        /// <param name="phoneNumber">Số điện thoại cần kiểm tra.</param>
+        /// <param name="id">Id khách hàng đang sửa (null nếu thêm mới).</param>
+        /// <returns>True nếu trùng, False nếu hợp lệ.</returns>
+        Task<bool> IsPhoneNumberExistAsync(string phoneNumber, Guid? id = null);
     }
 }

@@ -1,11 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.DTOs
+﻿namespace MISA.CRM2025.Core.DTOs
 {
+    /// <summary>
+    /// Lớp DTO dùng để ánh xạ dữ liệu khách hàng từ file CSV.
+    /// <para/>Mục đích: Lấy dữ liệu từ file CSV và chuyển đổi thành đối tượng CustomerCsv để xử lý nhập khẩu (import) hoặc xuất khẩu (export) dữ liệu khách hàng trong hệ thống CRM.
+    /// <para/>Ngữ cảnh sử dụng: 
+    /// <list type="bullet">
+    /// <item>Import: Sử dụng khi import danh sách khách hàng từ file CSV lên hệ thống.</item>
+    /// <item>Export: Sử dụng khi xuất dữ liệu khách hàng từ hệ thống ra file CSV.</item>
+    /// </list>
+    /// </summary>
+    /// Created by nguyentruongan - 05/12/2025
     public class CustomerCsv
     {
         #region Property

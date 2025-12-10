@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.DTOs.Requests
+﻿namespace MISA.CRM2025.Core.DTOs.Requests
 {
     /// <summary>
-    /// DTO dùng cho dữ liệu gửi từ client lên (Create / Update).
+    /// DTO dùng để nhận dữ liệu từ client khi tạo mới hoặc cập nhật thông tin khách hàng (Create/Update).
+    /// <para/>Mục đích:
+    /// - Nhận dữ liệu từ client để tạo mới hoặc cập nhật thông tin khách hàng.
+    /// - Tách riêng dữ liệu gửi lên từ client với entity Customer.
+    /// <para/>Ngữ cảnh sử dụng:
+    /// - Sử dụng trong API rại mới, upadte.
+    /// - Dữ liệu sẽ được validate trước khi chuyển xuống Service/Repository xử lý.
     /// </summary>
+    /// Created by: nguyentruongan - 06/12/2025
     public class CustomerRequest
     {
         #region Property

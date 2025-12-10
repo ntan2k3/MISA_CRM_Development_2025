@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MISA.CRM2025.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+681fc64bcedff4d831b11fca671aecbcda98cecc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e560053e087d32bea6be30c9278d35b60bbf1953")]
 [assembly: System.Reflection.AssemblyProductAttribute("MISA.CRM2025.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MISA.CRM2025.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

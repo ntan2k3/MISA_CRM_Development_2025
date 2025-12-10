@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.Exceptions
+﻿namespace MISA.CRM2025.Core.Exceptions
 {
     /// <summary>
     /// Exception khi xảy ra xung đột dữ liệu (ví dụ trùng key)

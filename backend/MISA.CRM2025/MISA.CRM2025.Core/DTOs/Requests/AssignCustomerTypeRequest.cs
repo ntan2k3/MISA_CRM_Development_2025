@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.DTOs.Requests
+﻿namespace MISA.CRM2025.Core.DTOs.Requests
 {
     /// <summary>
-    /// Request để gán hàng loạt loại khách hàng
+    /// Lớp request dùng để gán loại khách hàng cho nhiều khách hàng cùng lúc.
+    /// <para/>Mục đích: Chuyển danh sách khách hàng sang một loại khách hàng cụ thể trong hệ thống.
+    /// <para/>Ngữ cảnh sử dụng: 
+    /// - Sử dụng trong các API cập nhật loại khách hàng hàng loạt.
     /// </summary>
+    /// Created by: nguyentruongan - 06/12/2025
     public class AssignCustomerTypeRequest
     {
         /// <summary>

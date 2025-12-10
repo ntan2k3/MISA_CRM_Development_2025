@@ -1,98 +1,119 @@
 ﻿using MISA.CRM2025.Core.DTOs.Requests;
-using MISA.CRM2025.Core.DTOs.Responses;
 using MISA.CRM2025.Core.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MISA.CRM2025.Core.Interfaces.Repositories
 {
     /// <summary>
-    /// Repository riêng cho Customer
-    /// Thêm các phương thức đặc thù
+    /// Repository chuyên xử lý các thao tác dữ liệu của Customer.
+    /// Chứa các phương thức đặc thù ngoài CRUD cơ bản.
     /// </summary>
     /// Created by: nguyentruongan - 03/12/2025
     public interface ICustomerRepository : IBaseRepository<Customer>
     {
         /// <summary>
-        /// Lấy bản ghi theo email
+        /// Lấy khách hàng theo email.
         /// </summary>
-        /// <param name="email"></param>
-        /// <returns></returns>
+        /// <param name="email">
+        /// Email cần tìm kiếm.
+        /// </param>
+        /// <returns>
+        /// Trả về Customer nếu tồn tại, null nếu không tìm thấy.
+        /// </returns>
+        /// Created by: nguyentruongan - 03/12/2025
         Task<Customer> GetByEmailAsync(string email);
 
         /// <summary>
-        /// Lấy bản ghi theo số điện thoại
+        /// Lấy khách hàng theo số điện thoại.
         /// </summary>
-        /// <param name="phoneNumber"></param>
-        /// <returns></returns>
+        /// <param name="phoneNumber">
+        /// Số điện thoại cần tìm kiếm.
+        /// </param>
+        /// <returns>
+        /// Trả về Customer nếu tồn tại, null nếu không tìm thấy.
+        /// </returns>
+        /// Created by: nguyentruongan - 03/12/2025
         Task<Customer> GetByPhoneAsync(string phoneNumber);
 
         /// <summary>
-        /// Lấy ra mã khách hàng lớn nhất theo prefix
+        /// Lấy mã khách hàng lớn nhất dựa theo prefix
+        /// để phục vụ sinh mã tự động.
         /// </summary>
-        /// <param name="prefix">prefix pattern có dạng KH + yyyyMM </param>
-        /// <returns>Mã khách hàng lớn nhất</returns>
+        /// <param name="prefix">
+        /// Tiền tố mã khách hàng, ví dụ: "KH202512".
+        /// </param>
+        /// <returns>
+        /// Chuỗi mã khách hàng có giá trị lớn nhất trong DB theo prefix.
+        /// </returns>
+        /// Created by: nguyentruongan - 04/12/2025
         Task<string> GetMaxCustomerCodeAsync(string prefix);
 
         /// <summary>
-        /// Lấy danh sách khách hàng theo phân trang, có hỗ trợ tìm kiếm và lọc.
+        /// Lấy danh sách khách hàng theo phân trang
+        /// kèm tìm kiếm, sắp xếp và lọc.
         /// </summary>
         /// <param name="query">
-        /// Đối tượng CustomerQueryParameters chứa các tham số truy vấn:
-        /// - Page: trang hiện tại muốn lấy
-        /// - PageSize: số bản ghi trên mỗi trang
-        /// - Search: từ khóa tìm kiếm (tên, email, số điện thoại,...)
-        /// - SortBy: sắp xép theo trường
-        /// - SortDirection: sắp xếp theo chiều giảm dần hoặc tăng dần
-        /// - Filter: lọc theo trường
+        /// Đối tượng chứa các tham số truy vấn:
+        /// - Page: trang hiện tại  
+        /// - PageSize: số bản ghi mỗi trang  
+        /// - Search: từ khóa tìm kiếm  
+        /// - SortBy: trường sắp xếp  
+        /// - SortDirection: chiều sắp xếp (ASC/DESC)  
+        /// - CustomerType: điều kiện lọc  
         /// </param>
         /// <returns>
-        /// Trả về một Task với tuple gồm:
-        /// - Data: danh sách khách hàng theo trang yêu cầu
-        /// - TotalCount: tổng số khách hàng thỏa mãn điều kiện truy vấn
+        /// Danh sách khách hàng thuộc trang tương ứng.
         /// </returns>
+        /// Created by: nguyentruongan - 04/12/2025
         Task<IEnumerable<Customer>> GetCustomersPagingAsync(CustomerQueryParameters query);
 
         /// <summary>
-        /// Lấy ra tổng số bản ghi theo query 
+        /// Lấy tổng số bản ghi khách hàng thỏa mãn điều kiện truy vấn.
         /// </summary>
-        /// <param name="query"></param>
+        /// <param name="query">
+        /// Tham số tìm kiếm, lọc và phân trang.
+        /// </param>
         /// <returns>
-        /// tổng số khách hàng thỏa mãn điều kiện truy vấn
+        /// Số lượng bản ghi phù hợp.
         /// </returns>
+        /// Created by: nguyentruongan - 04/12/2025
         Task<int> GetTotalCountAsync(CustomerQueryParameters query);
 
         /// <summary>
-        /// Lấy danh sách khách hàng theo id
+        /// Lấy danh sách khách hàng theo nhiều Id.
         /// </summary>
-        /// <param name="ids"></param>
-        /// <returns></returns>
+        /// <param name="ids">
+        /// Danh sách Id khách hàng.
+        /// </param>
+        /// <returns>
+        /// Danh sách Customer tương ứng với các Id truyền vào.
+        /// </returns>
+        /// Created by: nguyentruongan - 04/12/2025
         Task<IEnumerable<Customer>> GetListByIdsAsync(List<Guid> ids);
 
         /// <summary>
-        /// Dùng để upload avatar khách hàng
+        /// Xóa mềm nhiều khách hàng cùng lúc.
         /// </summary>
-        /// <param name="id"></param>
-        /// <param name="avatarUrl"></param>
-        /// <returns></returns>
-        Task UploadAvatarAsync(Guid id, string avatarUrl);
-
-        /// <summary>
-        /// Xóa hàng loạt khách hàng
-        /// </summary>
-        /// <param name="ids">Danh sách id khách hàng</param>
-        /// <returns></returns>
+        /// <param name="ids">
+        /// Danh sách Id cần xóa mềm.
+        /// </param>
+        /// <returns>
+        /// Số lượng bản ghi đã xóa thành công.
+        /// </returns>
+        /// Created by: nguyentruongan - 05/12/2025
         Task<int> SoftDeleteManyAsync(List<Guid> ids);
 
         /// <summary>
-        /// Gán hàng loạt loại khách hàng cho các khách hàng được chọn
+        /// Gán loại khách hàng cho nhiều khách hàng cùng lúc.
         /// </summary>
-        /// <param name="ids">Danh sách CustomerId cần gán</param>
-        /// <param name="customerTypeId">Id loại khách hàng muốn gán</param>
-        /// <returns>Số lượng bản ghi đã cập nhật thành công</returns>
+        /// <param name="ids">
+        /// Danh sách CustomerId cần cập nhật.
+        /// </param>
+        /// <param name="customerType">
+        /// Loại khách hàng cần gán.
+        /// </param>
+        /// <returns>
+        /// Số bản ghi cập nhật thành công.
+        /// </returns>
         /// Created by: nguyentruongan - 06/12/2025
         Task<int> AssignCustomerTypeAsync(List<Guid> ids, string customerType);
     }

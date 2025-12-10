@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.DTOs.Responses
+﻿namespace MISA.CRM2025.Core.DTOs.Responses
 {
     /// <summary>
     /// Lớp dùng để chuẩn hóa dữ liệu trả về cho API.
-    /// tất cả API đều trả về theo 1 format:
+    /// <para/>Mục đích:
+    /// - Tất cả API trả về theo một định dạng chuẩn gồm Data, Meta, Error.
+    /// - Giúp frontend dễ dàng xử lý dữ liệu trả về và lỗi.
+    /// <para/>Ngữ cảnh sử dụng:
+    /// - Dùng làm chuẩn response cho tất cả API trong hệ thống.
+    /// - Dễ dàng phân trang, báo lỗi hoặc trả dữ liệu.
+    /// <para/>Định dạng chuẩn:
     /// {
     ///   data: ...,
     ///   meta: {
@@ -20,7 +19,7 @@ namespace MISA.CRM2025.Core.DTOs.Responses
     ///   error: ...
     /// }
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">Kiểu dữ liệu trả về trong Data</typeparam>
     /// Created by: nguyentruongan - 05/12/2025
     public class ApiResponse<T>
     {
@@ -45,7 +44,9 @@ namespace MISA.CRM2025.Core.DTOs.Responses
     }
 
     /// <summary>
-    /// Định dạng các lỗi trả về
+    /// Định dạng các lỗi trả về từ API.
+    /// <para/>Mục đích: Chuẩn hóa thông tin lỗi để frontend hiển thị.
+    /// <para/>Ngữ cảnh sử dụng: Khi API trả lỗi liên quan đến request hoặc xử lý dữ liệu.
     /// </summary>
     public class ApiError
     {
@@ -70,7 +71,9 @@ namespace MISA.CRM2025.Core.DTOs.Responses
     }
 
     /// <summary>
-    /// Định dạng metadata
+    /// Định dạng metadata cho API response.
+    /// <para/>Mục đích: Cung cấp thông tin phân trang cho frontend.
+    /// <para/>Ngữ cảnh sử dụng: Khi API trả danh sách có phân trang.
     /// </summary>
     public class MetaData
     {

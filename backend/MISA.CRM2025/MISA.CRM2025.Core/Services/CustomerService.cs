@@ -4,31 +4,33 @@ using Microsoft.AspNetCore.Http;
 using MISA.CRM2025.Core.DTOs;
 using MISA.CRM2025.Core.DTOs.Requests;
 using MISA.CRM2025.Core.Entities;
-using MISA.CRM2025.Core.Exceptions;
 using MISA.CRM2025.Core.Interfaces.Repositories;
 using MISA.CRM2025.Core.Interfaces.Services;
 using MISA.CRM2025.Core.Mappings;
 using System.Globalization;
-using System.Net.Mail;
 using System.Text;
-using System.Text.RegularExpressions;
 
 
 namespace MISA.CRM2025.Core.Services
 {
     /// <summary>
-    /// Service xử lý toàn bộ nghiệp vụ liên quan đến khách hàng.
-    /// Kế thừa BaseService để dùng chung CRUD cơ bản và bổ sung
-    /// thêm các logic validate, import/export, upload avatar.
+    /// Service xử lý nghiệp vụ khách hàng.
+    /// <para/>Mục đích:
+    /// - Kế thừa BaseService để dùng CRUD cơ bản.
+    /// - Thêm validate nghiệp vụ, xử lý avatar, import/export CSV, gán loại khách hàng.
+    /// <para/>Ngữ cảnh sử dụng: Gọi bởi Controller để thao tác dữ liệu khách hàng.
     /// </summary>
     /// Created by: nguyentruongan - 04/12/2025
     public class CustomerService : BaseService<Customer, CustomerRequest>, ICustomerService
     {
         /// <summary>
-        /// Repository Customer — dùng để truy vấn DB cho phần nghiệp vụ riêng. 
+        /// Repository thao tác DB cho nghiệp vụ riêng
         /// </summary>
         private readonly ICustomerRepository _customerRepository;
 
+        /// <summary>
+        /// Lấy đường dẫn WebRootPath
+        /// </summary>
         private readonly IHostingEnvironment _env;
 
         /// <summary>
@@ -42,39 +44,37 @@ namespace MISA.CRM2025.Core.Services
             _env = env;
         }
 
+        #region CRUD cơ bản
+
         /// <summary>
-        /// Lấy thông tin chi tiết của một khách hàng dựa trên Id.
+        /// Lấy thông tin chi tiết khách hàng theo Id
+        /// <para/>Sử dụng khi cần hiển thị hoặc xử lý thông tin chi tiết khách hàng trên UI hoặc logic nghiệp vụ
         /// </summary>
-        /// <param name="id">Id của khách hàng.</param>
-        /// <returns>Đối tượng customer tương ứng.</returns>
-        /// <exception cref="NotFoundException">Ném lỗi nếu không tìm thấy khách hàng.</exception>
+        /// <param name="id">Id của khách hàng cần lấy</param>
+        /// <returns>Customer tương ứng với Id, trả về null nếu không tìm thấy</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 04/12/2025
         public override async Task<Customer> GetByIdAsync(Guid id)
         {
-            // Lấy ra khách hàng theo id từ repo
-            var customer = await _customerRepository.GetByIdAsync(id);
-            
-            // Không thấy -> NotFound
-            if (customer == null)
-                throw new NotFoundException("Không tìm thấy khách hàng.", field:"CustomerId");
-
-            // Có thì trả về
-            return customer;
+            // Trả về khách hàng theo id 
+            return await _customerRepository.GetByIdAsync(id);
         }
 
 
         /// <summary>
-        /// Thêm mới khách hàng.
-        /// Thực hiện validate, xử lý avatar tạm, map DTO sang Entity và lưu xuống DB.
+        /// Thêm mới khách hàng
+        /// <para/>Sử dụng khi người dùng muốn tạo khách hàng mới từ form hoặc API
+        /// xử lý avatar, map DTO -> Entity và lưu vào DB
         /// </summary>
-        /// <param name="dto">Dữ liệu khách hàng từ request.</param>
-        /// <param name="createdBy">Người tạo bản ghi.</param>
-        /// <returns>Khách hàng vừa được thêm mới.</returns>
+        /// <param name="dto">Dữ liệu khách hàng từ request</param>
+        /// <param name="createdBy">Người tạo bản ghi</param>
+        /// <returns>Customer vừa được tạo, trả về null nếu validate lỗi</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 04/12/2025
         public override async Task<Customer> InsertAsync(CustomerRequest dto, string createdBy)
         {
-            // Validate
-            await ValidateCustomerAsync(null, dto);
+            // Validate logic nghiệp vụ
+            if (!await ValidateBusinessAsync(null, dto)) return null!;
 
             // Xử lý avatar: nếu client trước đó upload tạm, move sang folder chính
             var avatarUrl = MoveTempAvatarToAvatarFolder(dto.CustomerAvatarUrl) ?? "";
@@ -110,33 +110,35 @@ namespace MISA.CRM2025.Core.Services
         }
 
         /// <summary>
-        /// Cập nhật thông tin của khách hàng dựa trên Id.
-        /// Thực hiện validate, xử lý avatar tạm và cập nhật các trường dữ liệu.
+        /// Cập nhật thông tin khách hàng theo Id
+        /// <para/>Sử dụng khi cần chỉnh sửa thông tin khách hàng từ form hoặc API
+        /// xử lý avatar và cập nhật các trường dữ liệu
         /// </summary>
-        /// <param name="id">Id khách hàng cần cập nhật.</param>
-        /// <param name="dto">Dữ liệu cập nhật từ request.</param>
-        /// <param name="modifiedBy">Người thực hiện chỉnh sửa.</param>
-        /// <returns>Khách hàng sau khi được cập nhật.</returns>
-        /// <exception cref="NotFoundException">Ném lỗi nếu không tồn tại khách hàng.</exception>
+        /// <param name="id">Id khách hàng cần cập nhật</param>
+        /// <param name="dto">Dữ liệu cập nhật từ request</param>
+        /// <param name="modifiedBy">Người thực hiện chỉnh sửa</param>
+        /// <returns>Customer sau khi cập nhật, trả về null nếu không tìm thấy hoặc validate lỗi</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 04/12/2025
         public override async Task<Customer> UpdateAsync(Guid id, CustomerRequest dto, string modifiedBy)
         {
-            // Validate
-            await ValidateCustomerAsync(id, dto);
-
             // Lấy ra customer hiện tại
             var customer = await _customerRepository.GetByIdAsync(id);
 
-            // Không thấy -> NotFound
+            // Không thấy -> trả null
             if (customer == null)
 
-                throw new NotFoundException($"Không tìm thấy khách hàng {id} để cập nhật.", field: "CustomerId");
+                return null;
+
+            // Validate logic nghiệp vụ
+            if (!await ValidateBusinessAsync(id, dto)) return null!;
 
             // Nếu người dùng update avatar thì chuyển tư temp -> avatars
             var avatarUrl = MoveTempAvatarToAvatarFolder(dto.CustomerAvatarUrl);
 
             // Nếu có ảnh update thì gán lại cho khách hàng hiện tại, không thì không cập nhật.
             if(avatarUrl != null)
+
                 customer.CustomerAvatarUrl = avatarUrl;
 
             // Gán các field cần cập nhật
@@ -162,105 +164,53 @@ namespace MISA.CRM2025.Core.Services
         }
 
         /// <summary>
-        /// Xóa mềm một khách hàng (đặt IsDeleted = true).
+        /// Xóa mềm một khách hàng (IsDeleted = true)
+        /// <para/>Sử dụng khi muốn xóa khách hàng nhưng vẫn giữ dữ liệu trong DB
         /// </summary>
-        /// <param name="id">Id khách hàng cần xóa mềm.</param>
-        /// <returns>Số lượng bản ghi bị ảnh hưởng.</returns>
-        /// <exception cref="NotFoundException">Ném lỗi nếu không tìm thấy khách hàng.</exception>
+        /// <param name="id">Id khách hàng cần xóa</param>
+        /// <returns>Số lượng bản ghi bị ảnh hưởng</returns>
+        /// <remarks></remarks>
+        /// Created by: nguyentruongan - 04/12/2025
         public override async Task<int> SoftDeleteAsync(Guid id)
         {
-            // Lấy ra khách hàng cần xóa theo id
-            var customer = await _repo.GetByIdAsync(id);
-
-            // Không thấy -> NotFound
-            if (customer == null)
-                throw new NotFoundException("Không tìm thấy khách hàng để xóa.", field: "CustomerId");
-
             // Gọi repo để xóa
             return await _repo.SoftDeleteAsync(id);
         }
 
+        #endregion
+
+        #region Business Logic
+
         /// <summary>
-        /// Validate dữ liệu khi Insert/Update
-        /// Bao gồm:
-        /// - Check không được để trống tên, số điện thoại và email
-        /// - Check định dạng email
-        /// - Check định dạng số điện thoại (10 - 11 số)
+        /// Thực hiện validate nghiệp vụ trước khi thêm mới hoặc cập nhật khách hàng.
+        /// <para/>Ngữ cảnh sử dụng: Kiểm tra trùng email và số điện thoại trước khi ghi dữ liệu xuống DB.
         /// </summary>
-        /// <param name="id">Nếu update truyền id, insert truyền null</param>
-        /// <param name="dto">CustomerRequest</param>
-        /// <returns></returns>
-        /// <exception cref="ValidateException">Ném lỗi khi dữ liệu không hợp lệ.</exception>
-        /// <exception cref="ConflictException">Ném lỗi khi dữ liệu bị trùng.</exception>
+        /// <param name="id">Id khách hàng hiện tại (nếu đang update), null nếu thêm mới.</param>
+        /// <param name="dto">Thông tin khách hàng cần kiểm tra.</param>
+        /// <returns>
+        /// True nếu dữ liệu hợp lệ (không bị trùng email/phone).  
+        /// False nếu phát hiện email hoặc số điện thoại đã được khách hàng khác sử dụng.
+        /// </returns>
         /// Created by: nguyentruongan - 04/12/2025
-        public async Task ValidateCustomerAsync(Guid? id, CustomerRequest dto)
+        private async Task<bool> ValidateBusinessAsync(Guid? id, CustomerRequest dto)
         {
-            // Tên không được để trống
-            if (string.IsNullOrWhiteSpace(dto.CustomerName))
-                throw new ValidateException("Tên khách hàng không được để trống.", field: "CustomerName");
-
-            // Check định dạng email
-            if (!IsValidEmail(dto.CustomerEmail))
-                throw new ValidateException("Email không đúng định dạng", field: "CustomerEmail");
-
-            // Email không được trùng
             var emailOwner = await _customerRepository.GetByEmailAsync(dto.CustomerEmail);
             if (emailOwner != null && emailOwner.CustomerId != id)
-                throw new ConflictException("Email đã tồn tại.", field: "CustomerEmail");
+                return false;
 
-            // Số điện thoại có 10 - 11 số
-            if (!IsValidPhone(dto.CustomerPhoneNumber))
-                throw new ValidateException("Sô điện thoại phải có định dạng từ 10 - 11 số", field: "CustomerPhoneNumber");
-
-
-            // Số điện thoại không được trùng
             var phoneOwner = await _customerRepository.GetByPhoneAsync(dto.CustomerPhoneNumber);
             if (phoneOwner != null && phoneOwner.CustomerId != id)
-                throw new ConflictException("Số điện thoại đã tồn tại.", field: "CustomerPhoneNumber");
-        }
-
-        /// <summary>
-        /// Kiểm tra email có đúng định dạng hay không.
-        /// </summary>
-        /// <param name="email">Địa chỉ email cần kiểm tra.</param>
-        /// <returns>True nếu hợp lệ, False nếu không.</returns>
-        /// Created by: nguyentruongan - 04/12/2025
-        public bool IsValidEmail(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email)) return false;
-            try
-            {
-                var _ = new MailAddress(email);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Kiểm tra định dạng số điện thoại Việt Nam (10–11 số, bắt đầu bằng 0).
-        /// </summary>
-        /// <param name="phone">Số điện thoại.</param>
-        /// <returns>True nếu hợp lệ.</returns>
-        /// Created by: nguyentruongan - 04/12/2025
-        public bool IsValidPhone(string phone)
-        {
-            if (string.IsNullOrWhiteSpace(phone))
                 return false;
 
-            // Bắt đầu bằng 0 theo sau là 9 hoặc 10 chữ số
-            string pattern = @"^0\d{9,10}$";
-
-            return Regex.IsMatch(phone, pattern);
+            return true;
         }
 
         /// <summary>
-        /// Tạo mã khách hàng
-        /// Dịnh dạng: KH + yyyyMM + 6 chữ số tăng dần
+        /// Sinh mã khách hàng tự động theo định dạng: KH + yyyyMM + 6 chữ số tăng dần.
+        /// <para/>Ngữ cảnh sử dụng: Tạo mã khách hàng mới khi thêm mới một bản ghi.
         /// </summary>
-        /// <returns>Mã khách hàng mới nhất</returns>
+        /// <returns>Mã khách hàng mới theo chuẩn hệ thống.</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 04/12/2025
         public async Task<string> GenerateCustomerCode()
         {
@@ -288,12 +238,18 @@ namespace MISA.CRM2025.Core.Services
             // Trả về code mới
             return newCode;
         }
-        
+
+        #endregion
+
+        #region Paging, Filtering, Search, Sort
+
         /// <summary>
-        /// Lấy ra tổng số bản ghi theo query
+        /// Lấy tổng số khách hàng theo bộ lọc
+        /// <para/>Sử dụng để hiển thị số lượng tổng cho phân trang hoặc thống kê
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
+        /// <param name="query">Thông tin filter/phân trang</param>
+        /// <returns>Số lượng khách hàng thỏa điều kiện</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         public async Task<int> GetTotalCountAsync(CustomerQueryParameters query)
         {
@@ -301,22 +257,29 @@ namespace MISA.CRM2025.Core.Services
         }
 
         /// <summary>
-        /// Lấy danh sách khách hàng theo phân trang và điều kiện lọc.
+        /// Lấy danh sách khách hàng theo phân trang và bộ lọc
+        /// <para/>Sử dụng khi hiển thị danh sách khách hàng trên UI với phân trang
         /// </summary>
-        /// <param name="query">Thông tin phân trang và bộ lọc.</param>
-        /// <returns>Danh sách khách hàng.</returns>
+        /// <param name="query">Thông tin phân trang và điều kiện lọc</param>
+        /// <returns>Danh sách khách hàng</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         public async Task<IEnumerable<Customer>> GetCustomersPagingAsync(CustomerQueryParameters query)
         {
             return await _customerRepository.GetCustomersPagingAsync(query);
         }
 
+        #endregion
+
+        #region Import / Export CSV
+
         /// <summary>
-        /// Xuất file CSV cho danh sách khách hàng theo Id được chọn.
-        /// Chỉ xuất các cột đã được khai báo trong CustomerCsvMap.
+        /// Xuất CSV cho danh sách khách hàng theo Id
+        /// <para/>Sử dụng khi người dùng muốn tải file CSV
         /// </summary>
-        /// <param name="ids">Danh sách Id khách hàng cần export.</param>
-        /// <returns>Mảng byte của file CSV.</returns>
+        /// <param name="ids">Danh sách Id khách hàng cần xuất</param>
+        /// <returns>File CSV dưới dạng byte[]</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         public async Task<byte[]> ExportCsvAsync(List<Guid> ids)
         {
@@ -324,6 +287,7 @@ namespace MISA.CRM2025.Core.Services
             var customers = await _customerRepository.GetListByIdsAsync(ids);
 
             // Chuyển từ entity sang DTO (chỉ chứa những trường cần xuất CSV)
+            // Select tạo danh sách mới csvData dùng để ghi CSV.
             var csvData = customers.Select(c => new CustomerCsv
             {
                 CustomerType = c.CustomerType,
@@ -338,13 +302,13 @@ namespace MISA.CRM2025.Core.Services
                 PurchasedItemName = c.PurchasedItemName
             }).ToList();
 
-            // Tạo bộ nhớ lưu file CSV
+            // Tạo bộ nhớ lưu file CSV, không ghi trực tiếp vào ổ cứng.
             using var memoryStream = new MemoryStream();
 
-            // UTF-8 BOM để Excel đọc tiếng Việt không bị lỗi font
+            // Ghi text vào memoryStream, UTF-8 BOM để Excel đọc tiếng Việt không bị lỗi font
             using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
 
-            // Tạo CSV Writer
+            // Tạo CSV Writer để ghi file CSV theo chuẩn.
             using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
 
             // Chỉ xuất đúng các cột đã map trong CustomerCsvMap
@@ -362,11 +326,12 @@ namespace MISA.CRM2025.Core.Services
 
 
         /// <summary>
-        /// Import dữ liệu khách hàng từ file CSV.
-        /// Tự động validate từng dòng và bỏ qua các dòng sai.
+        /// Import khách hàng từ file CSV
+        /// <para/>Sử dụng khi người dùng upload CSV để tạo nhiều khách hàng cùng lúc
         /// </summary>
-        /// <param name="csvStream">File CSV upload lên.</param>
-        /// <returns>Số lượng khách hàng được import thành công.</returns>
+        /// <param name="csvStream">File CSV</param>
+        /// <returns>Số lượng khách hàng import thành công</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         public async Task<int> ImportCsvAsync(Stream csvStream)
         {
@@ -376,73 +341,56 @@ namespace MISA.CRM2025.Core.Services
             // Tạo StreamReader để đọc text từ csvStream.
             using var streamReader = new StreamReader(csvStream);
 
-            // Tạo đối tượng CsvReader để parse CSV.
+            // Tạo đối tượng CsvReader để parse CSV thành các obj
             using var csv = new CsvReader(streamReader, CultureInfo.InvariantCulture);
 
             csv.Context.RegisterClassMap<CustomerCsvMap>();
 
             // GetRecords<T>() trả về IEnumerable<T>
-            List<CustomerCsv> records;
-
-            // Bắt lỗi thiếu cột ngay khi đọc CSV
-            try
-            {
-                records = csv.GetRecords<CustomerCsv>().ToList();
-            }
-            catch (HeaderValidationException ex)
-            {
-                throw new ValidateException($"File CSV thiếu cột dữ liệu", field: "File");
-            }
-           
+            var records = csv.GetRecords<CustomerCsv>().ToList();
 
             foreach (var dto in records)
             {
-                try
+                var customerRequest = new CustomerRequest
                 {
-                    var customer = new CustomerRequest
-                    {
-                        CustomerType = dto.CustomerType,
-                        CustomerCode = dto.CustomerCode,
-                        CustomerName = dto.CustomerName,
-                        CustomerTaxCode = dto.CustomerTaxCode,
-                        CustomerAddr = dto.CustomerAddr,
-                        CustomerPhoneNumber = dto.CustomerPhoneNumber,
-                        CustomerEmail = dto.CustomerEmail,
-                        LastPurchaseDate = dto.LastPurchaseDate,
-                        PurchasedItemCode = dto.PurchasedItemCode,
-                        PurchasedItemName = dto.PurchasedItemName
-                    };
+                    CustomerType = dto.CustomerType,
+                    CustomerCode = dto.CustomerCode,
+                    CustomerName = dto.CustomerName,
+                    CustomerTaxCode = dto.CustomerTaxCode,
+                    CustomerAddr = dto.CustomerAddr,
+                    CustomerPhoneNumber = dto.CustomerPhoneNumber,
+                    CustomerEmail = dto.CustomerEmail,
+                    LastPurchaseDate = dto.LastPurchaseDate,
+                    PurchasedItemCode = dto.PurchasedItemCode,
+                    PurchasedItemName = dto.PurchasedItemName
+                };
 
-                    await InsertAsync(customer, "");
+                var inserted = await InsertAsync(customerRequest, "");
+                if (inserted != null) 
                     count++;
-                }
-                catch (Exception ex)
-                {
-                    continue;
-                }
             }
+
             return count;
         }
 
+        #endregion
+
         /// <summary>
-        /// Upload ảnh tạm để preview trước khi submit form.
-        /// Ảnh sẽ được lưu vào thư mục /wwwroot/uploads/temp.
-        /// Khi người dùng submit form, ảnh này sẽ được move sang thư mục chính.
+        /// Upload ảnh tạm để preview
+        /// <para/>Sử dụng khi người dùng muốn xem trước avatar trước khi submit form
         /// </summary>
-        /// <param name="file">File ảnh người dùng upload</param>
-        /// <returns>Trả về đường dẫn URL tương đối để FE hiển thị preview</returns>
+        /// <param name="file">File ảnh upload</param>
+        /// <returns>URL ảnh tạm để FE hiển thị</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         public async Task<string> UploadTempAvatarAsync(IFormFile file)
         {
-            // Kiểm tra file null hoặc rỗng
-            if (file == null || file.Length == 0)
-                throw new ValidateException("File không hợp lệ hoặc không tồn tại", field: "File");
-
             // Xác định đường dẫn thư mục tạm trong wwwroot (wwwroot/uploads/temp)
             var folderPath = Path.Combine(_env.WebRootPath, "uploads", "temp");
 
             // Nếu thư mục chưa tồn tại thì tự tạo
             if (!Directory.Exists(folderPath))
+
                 Directory.CreateDirectory(folderPath);
 
             // Tạo tên file unique để tránh trùng (GUID + đuôi file)
@@ -462,12 +410,12 @@ namespace MISA.CRM2025.Core.Services
         }
 
         /// <summary>
-        /// Di chuyển file avatar từ thư mục tạm => thư mục chính.
-        /// Được gọi khi người dùng submit form.
-        /// Ví dụ: từ /uploads/temp/avatar.png -> /uploads/avatars/avatar.png
+        /// Move file avatar từ temp sang avatars
+        /// <para/>Sử dụng khi submit form để lưu ảnh chính thức
         /// </summary>
-        /// <param name="tempUrl">URL ảnh tạm do FE gửi lên</param>
-        /// <returns>URL mới sau khi move, hoặc null nếu không có ảnh</returns>
+        /// <param name="tempUrl">URL ảnh tạm</param>
+        /// <returns>URL ảnh mới hoặc null nếu không có</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         private string? MoveTempAvatarToAvatarFolder(string? tempUrl)
         {
@@ -504,10 +452,12 @@ namespace MISA.CRM2025.Core.Services
         }
 
         /// <summary>
-        /// Xóa mềm hàng loạt khách hàng.
+        /// Xóa mềm nhiều khách hàng
+        /// <para/>Sử dụng khi muốn xóa nhiều khách hàng cùng lúc mà vẫn giữ dữ liệu
         /// </summary>
-        /// <param name="ids">Danh sách Id cần xóa mềm.</param>
-        /// <returns>Số lượng bản ghi bị ảnh hưởng.</returns>
+        /// <param name="ids">Danh sách Id cần xóa</param>
+        /// <returns>Số bản ghi bị ảnh hưởng</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 05/12/2025
         public async Task<int> SoftDeleteManyAsync(List<Guid> ids)
         {
@@ -515,27 +465,54 @@ namespace MISA.CRM2025.Core.Services
         }
 
         /// <summary>
-        /// Gán loại khách hàng cho danh sách Id truyền vào.
+        /// Gán loại khách hàng cho nhiều khách hàng
+        /// <para/>Sử dụng khi cần update type của nhiều khách hàng cùng lúc
         /// </summary>
-        /// <param name="ids">Danh sách khách hàng.</param>
-        /// <param name="customerType">Loại khách hàng cần gán.</param>
-        /// <returns>Số lượng khách hàng được cập nhật.</returns>
-        /// <exception cref="ValidateException">Ném lỗi nếu input không hợp lệ.</exception>
+        /// <param name="ids">Danh sách Id khách hàng</param>
+        /// <param name="customerType">Loại khách hàng cần gán</param>
+        /// <returns>Số khách hàng được cập nhật</returns>
+        /// <remarks></remarks>
         /// Created by: nguyentruongan - 06/12/2025
         public async Task<int> AssignCustomerTypeAsync(List<Guid> ids, string customerType)
         {
-            // Validate đầu vào
-            if (ids == null || ids.Count == 0)
-                throw new ValidateException("Danh sách khách hàng không được rỗng.", field: "CustomerIds");
-
-            if (string.IsNullOrWhiteSpace(customerType))
-                throw new ValidateException("Loại khách hàng không được để trống.", field: "CustomerType");
-
             // Gọi repo để update hàng loạt
             var result = await _customerRepository.AssignCustomerTypeAsync(ids, customerType);
 
             return result;
         }
+
+        #region Check tồn tại Email / Phone
+
+        /// <summary>
+        /// Kiểm tra email đã tồn tại hay chưa (tránh trùng khi thêm/sửa)
+        /// </summary>
+        /// <param name="email">Email cần kiểm tra</param>
+        /// <param name="id">Id khách hàng đang sửa (null nếu thêm mới)</param>
+        /// <returns>True nếu tồn tại, false nếu chưa tồn tại</returns>
+        /// Created by: nguyentruongan - 08/12/2025
+        public async Task<bool> IsEmailExistAsync(string email, Guid? id = null)
+        {
+            var existingCustomer = await _customerRepository.GetByEmailAsync(email);
+            // Nếu tồn tại và không phải bản ghi đang edit thì trả về true
+            return existingCustomer != null && existingCustomer.CustomerId != id;
+        }
+
+        /// <summary>
+        /// Kiểm tra số điện thoại đã tồn tại hay chưa (tránh trùng khi thêm/sửa)
+        /// </summary>
+        /// <param name="phoneNumber">Số điện thoại cần kiểm tra</param>
+        /// <param name="id">Id khách hàng đang sửa (null nếu thêm mới)</param>
+        /// <returns>True nếu tồn tại, false nếu chưa tồn tại</returns>
+        /// Created by: nguyentruongan - 08/12/2025
+        public async Task<bool> IsPhoneNumberExistAsync(string phoneNumber, Guid? id = null)
+        {
+            var existingCustomer = await _customerRepository.GetByPhoneAsync(phoneNumber);
+            // Nếu tồn tại và không phải bản ghi đang edit thì trả về true
+            return existingCustomer != null && existingCustomer.CustomerId != id;
+        }
+
+        #endregion
+
     }
 }
     

@@ -1,20 +1,26 @@
 ﻿using CsvHelper.Configuration;
 using MISA.CRM2025.Core.DTOs;
-using MISA.CRM2025.Core.DTOs.Requests;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MISA.CRM2025.Core.Mappings
 {
     /// <summary>
-    /// ClassMap cho CsvHelper: ánh xạ giữa tên cột CSV (snake_case) và DTO CustomerCreateDto (PascalCase).
-    /// Khi export/import CSV, dùng map này để consistent.
+    /// Lớp ánh xạ (ClassMap) dùng cho thư viện CsvHelper.
+    /// <para/>Mục đích: Xác định cách map giữa tên cột trong file CSV (định dạng snake_case)
+    /// và các thuộc tính của DTO CustomerCsv (định dạng PascalCase).
+    /// <para/>Ngữ cảnh sử dụng: Dùng khi export dữ liệu khách hàng ra CSV hoặc import CSV vào hệ thống,
+    /// đảm bảo tính nhất quán giữa dữ liệu CSV và đối tượng trong hệ thống.
+    /// <list type="bullet">
+    /// <item>Map(): Dùng để ánh xạ từng thuộc tính sang tên cột CSV.</item>
+    /// <item>TypeConverterOption.Format(): Dùng để định dạng cột ngày tháng khi export.</item>
+    /// </list>
     /// </summary>
     public class CustomerCsvMap : ClassMap<CustomerCsv>
     {
+        /// <summary>
+        /// Hàm khởi tạo thiết lập toàn bộ ánh xạ giữa CustomerCsv và tên cột CSV.
+        /// <para/>Ngữ cảnh sử dụng: Tự động chạy khi CsvHelper khởi tạo mapping.
+        /// </summary>
+        /// <remarks></remarks>
         public CustomerCsvMap()
         {
             Map(m => m.CustomerType).Name("customer_type");

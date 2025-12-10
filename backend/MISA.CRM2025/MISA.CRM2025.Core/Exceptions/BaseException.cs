@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MISA.CRM2025.Core.Exceptions
+﻿namespace MISA.CRM2025.Core.Exceptions
 {
     /// <summary>
     /// Base Exception dùng chung cho tất cả custom exceptions

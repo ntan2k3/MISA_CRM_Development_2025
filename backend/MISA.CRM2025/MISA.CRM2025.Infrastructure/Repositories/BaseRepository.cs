@@ -1,23 +1,17 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Dapper;
+using Microsoft.Extensions.Configuration;
 using MISA.CRM2025.Core.Interfaces.Repositories;
 using MySqlConnector;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Dapper;
 
 namespace MISA.CRM2025.Infrastructure.Repositories
 {
     /// <summary>
-    /// Base repository chứa các phương thức CRUD cơ bản
-    /// Generic T → tái sử dụng cho mọi bảng.
+    /// Repository cơ sở cung cấp các thao tác CRUD chung cho tất cả entity.
+    /// <para/>Ngữ cảnh sử dụng: Là lớp nền tảng để các repository khác kế thừa và tái sử dụng logic làm việc với database.
     /// </summary>
-    /// <typeparam name="T">Entity</typeparam>
+    /// <typeparam name="T">Entity tương ứng với bảng trong database.</typeparam>
     /// Created by: nguyentruongan - 03/12/2025
     public class BaseRepository<T> : IBaseRepository<T>, IDisposable where T : class
     {
@@ -32,10 +26,10 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         protected IDbConnection dbConnection;
 
         /// <summary>
-        /// Lấy chuỗi kết nối
-        /// Kết nối đến database
+        /// Khởi tạo repository và thiết lập kết nối đến database.
+        /// <para/>Ngữ cảnh: Tự động được gọi khi khởi tạo repository kế thừa.
         /// </summary>
-        /// <param name="config"></param>
+        /// <param name="config">Đối tượng cấu hình chứa chuỗi kết nối database.</param>
         public BaseRepository(IConfiguration config)
         {
             connectionString = config.GetConnectionString("DefaultConnection");
@@ -43,18 +37,21 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         }
 
         /// <summary>
-        /// Hàm chuyển đổi từ PascalCase sang snake_case
+        /// Chuyển đổi chuỗi PascalCase thành snake_case.
+        /// <para/>Ngữ cảnh: Dùng khi ánh xạ property C# sang tên cột trong database.</para>
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns>name dạng snake_case</returns>
+        /// <param name="name">Tên cần chuyển đổi.</param>
+        /// <returns>Chuỗi đã được format sang snake_case.</returns>
         public string ToSnakeCase(string name)
         {
             return Regex.Replace(name, "([a-z])([A-Z])", "$1_$2").ToLower();
         }
+
         /// <summary>
-        /// Lấy tất cả bản ghi (trừ các bản ghi xóa mềm)
+        /// Lấy tất cả bản ghi chưa bị xóa mềm.
+        /// <para/>Ngữ cảnh: Dùng khi hiển thị danh sách dữ liệu cơ bản.</para>
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Danh sách entity T.</returns>
         public virtual async Task<IEnumerable<T>> GetAllAsync()
         {
             // Lấy tên table
@@ -67,10 +64,11 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         }
 
         /// <summary>
-        /// Lấy bản ghi theo id 
+        /// Lấy một bản ghi theo Id.
+        /// <para/>Ngữ cảnh: Xem chi tiết hoặc load dữ liệu trước khi update.</para>
         /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
+        /// <param name="id">Khóa chính của bản ghi cần lấy.</param>
+        /// <returns>Bản ghi nếu tồn tại, null nếu không tìm thấy.</returns>
         public virtual async Task<T> GetByIdAsync(Guid id)
         {
             // Lấy tên table
@@ -83,10 +81,11 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         }
 
         /// <summary>
-        /// Thêm mới bản ghi vào database
+        /// Thêm mới một bản ghi vào database.
+        /// <para/>Ngữ cảnh: Dùng khi tạo mới entity.</para>
         /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
+        /// <param name="entity">Dữ liệu entity cần thêm.</param>
+        /// <returns>Số bản ghi bị ảnh hưởng (1 nếu thêm thành công).</returns>
         public virtual async Task<int> InsertAsync(T entity)
         {
             // Lấy ra các cột của table
@@ -106,10 +105,11 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         }
 
         /// <summary>
-        /// Cập nhật bản ghi 
+        /// Cập nhật toàn bộ thông tin một bản ghi.
+        /// <para/>Ngữ cảnh: Dùng khi chỉnh sửa entity.</para>
         /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
+        /// <param name="entity">Dữ liệu mới của entity.</param>
+        /// <returns>Số bản ghi bị ảnh hưởng (1 nếu cập nhật thành công).</returns>
         public virtual async Task<int> UpdateAsync(T entity)
         {
             // Lấy tên table
@@ -128,10 +128,11 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         }
 
         /// <summary>
-        /// Xóa mềm bản ghi
+        /// Xóa mềm bản ghi bằng cách đặt is_deleted = 1.
+        /// <para/>Ngữ cảnh: Dùng khi xóa dữ liệu nhưng vẫn cần lưu lại lịch sử.</para>
         /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
+        /// <param name="id">Id của bản ghi cần xóa.</param>
+        /// <returns>Số bản ghi bị ảnh hưởng.</retur
         public virtual async Task<int> SoftDeleteAsync(Guid id)
         {
             // Lấy ra tên table
@@ -144,7 +145,8 @@ namespace MISA.CRM2025.Infrastructure.Repositories
         }
 
         /// <summary>
-        /// Giải phóng tài nguyên kết nối database
+        /// Giải phóng tài nguyên kết nối.
+        /// <para/>Ngữ cảnh: Tự động được gọi khi repository bị hủy.</para>
         /// </summary>
         public void Dispose()
         {

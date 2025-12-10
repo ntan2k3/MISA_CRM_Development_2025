@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Builder;
-
-namespace MISA.CRM2025.Api.Middlewares
+﻿namespace MISA.CRM2025.Api.Middlewares
 {
     /// <summary>
     /// Class mở rộng (extension) giúp đăng ký ExceptionMiddleware 
