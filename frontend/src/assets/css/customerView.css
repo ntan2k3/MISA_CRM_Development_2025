@@ -296,3 +296,13 @@
 input[type="radio"] {
   accent-color: #4262f0;
 }
+
+.assign-btn {
+  padding: 8px !important;
+}
+
+.assign-btn .ms-button__content {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 8px;
+}

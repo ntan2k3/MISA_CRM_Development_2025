@@ -1,4 +1,5 @@
 <script setup>
+//#region Import
 import MsButton from "@/components/ms-button/MsButton.vue";
 import MsTable from "@/components/ms-table/MsTable.vue";
 import MsInput from "@/components/ms-input/MsInput.vue";
@@ -13,11 +14,12 @@ import { message } from "ant-design-vue";
 import { usePagination } from "@/utils/composables/usePagination.js";
 
 import "@/assets/css/customerView.css";
+//#endregion
 
 //#region Router
 // Khởi tạo router để điều hướng
-const router = useRouter();
-const route = useRoute();
+const router = useRouter(); // Để chuyển trang
+const route = useRoute(); // Để đọc url hiện tại
 //#endregion
 
 //#region Computed
@@ -44,15 +46,17 @@ const paginationInfo = computed(() => ({
 //#endregion
 
 //#region States
-// Trạng thái loading
-const loading = ref(false);
+// Trạng thái loading khi onMounted.
+const isFirstLoad = ref(true);
+
+// Trạng thái loading khi lấy dữ liệu
+const isLoadingData = ref(false);
+
+// Trạng thái loading khi import file
+const isImportLoading = ref(false);
 
 // Modal import file Excel
 const isOpenImportModal = ref(false);
-
-// Modal gắn loại khách hàng
-const isAssignTypeModalOpen = ref(false);
-const selectedCustomerType = ref("");
 
 // File upload và trạng thái
 const uploadedFile = ref(null);
@@ -83,6 +87,21 @@ const tableRef = ref(null);
 //#endregion
 
 //#region Pagination (usePagination)
+/**
+ * Sử dụng custom composable usePagination để quản lý logic phân trang
+ *
+ * Tham số truyền vào: 100 (pageSize mặc định là 100 bản ghi/trang)
+ *
+ * Composable này return ra:
+ * - pageSize: Số bản ghi trên 1 trang (reactive, có thể thay đổi)
+ * - pageNumber: Trang hiện tại (bắt đầu từ 1)
+ * - total: Tổng số bản ghi (lấy từ API)
+ * - totalPages: Tổng số trang (computed từ total và pageSize)
+ * - nextPage(): Hàm chuyển sang trang kế tiếp
+ * - prevPage(): Hàm quay lại trang trước
+ * - startPage(): Hàm về trang đầu tiên
+ * - endPage(): Hàm đến trang cuối cùng
+ */
 const { pageSize, pageNumber, total, totalPages, nextPage, prevPage, startPage, endPage } =
   usePagination(100);
 //#endregion
@@ -128,39 +147,56 @@ const customerTypeOptions = [
   { key: "LKHA", value: "LKHA" },
   { key: "NBH01", value: "NBH01" },
 ];
+
+// Options cho dropdown gắn loại (không bao gồm "Tất cả")
+const assignTypeOptions = [
+  { label: "VIP", value: "VIP" },
+  { label: "LKHA", value: "LKHA" },
+  { label: "NBH01", value: "NBH01" },
+];
 //#endregion
 
 //#region Methods
-/** Cập nhật danh sách row được chọn */
+/**
+ * Hàm xử lý khi người dùng tick/untick checkbox trong bảng
+ * @param {Array} items - Mảng các row object đang được chọn
+ * Được gọi bởi: MsTable component khi selection thay đổi
+ * Ví dụ:
+ * items = [
+ *   { customerId: 1, customerName: "A" },
+ *   { customerId: 5, customerName: "B" }
+ * ]
+ * → selectedIds = [1, 5]
+ * → checkedCount = 2
+ */
 const handleSelectionChange = (items) => {
+  // Chỉ lấy ra id rồi lưu vào mảng
   selectedIds.value = items.map((i) => i.customerId);
+  // Số lượng id đã chọn
   checkedCount.value = selectedIds.value.length;
 };
 
-/** Mở modal import file Excel */
+/**
+ * Mở modal import file Excel
+ */
 const openImportModal = () => {
   isOpenImportModal.value = true;
   uploadedFile.value = null;
   uploadSuccess.value = false;
 };
 
-/** Đóng modal import */
+/**
+ *  Đóng modal import
+ */
 const closeImportModal = () => {
   isOpenImportModal.value = false;
 };
 
-/** Mở modal gắn loại khách hàng */
-const openAssignTypeModal = () => {
-  isAssignTypeModalOpen.value = true;
-  selectedCustomerType.value = ""; // Reset khi mở modal
-};
-
-/** Đóng modal gắn loại khách hàng */
-const closeAssignTypeModal = () => {
-  isAssignTypeModalOpen.value = false;
-};
-
-/** Xử lý khi chọn file upload */
+/**
+ * Hàm xử lý khi người dùng chọn file từ input file
+ * @param {Event} e - Event object từ input file
+ * Được gọi khi: Change event của <input type="file">
+ */
 const handleFileChange = (e) => {
   const file = e.target.files[0];
   if (file) {
@@ -171,18 +207,24 @@ const handleFileChange = (e) => {
   }
 };
 
-/** Chuyển sang view thêm khách hàng */
+/**
+ * Chuyển sang view thêm khách hàng
+ */
 const handleAdd = () => {
   router.push("/customers/add");
 };
 
-/** Chuyển sang view sửa khách hàng */
+/**
+ * Chuyển sang view sửa khách hàng
+ */
 const handleEdit = (id) => {
   if (!id) return;
   router.push({ name: "customer-edit", params: { id } });
 };
 
-/** Lấy tổng số bản ghi */
+/**
+ * Hàm lấy tổng số bản ghi (có áp dụng filter và search)
+ */
 const getTotalData = async () => {
   try {
     const res = await CustomersAPI.getTotalData({
@@ -195,9 +237,18 @@ const getTotalData = async () => {
   }
 };
 
-/** Lấy dữ liệu bảng từ server */
+/**
+ * Lấy dữ liệu bảng từ server
+ * Được gọi khi:
+ * - Component mount lần đầu
+ * - Thay đổi trang (pageNumber)
+ * - Thay đổi số bản ghi/trang (pageSize)
+ * - Thay đổi cột sắp xếp (sortBy, sortDirection)
+ * - Thay đổi filter (customerTypeFilter)
+ * - Gõ tìm kiếm (sau debounce 300ms)
+ */
 const loadData = async () => {
-  loading.value = true;
+  isLoadingData.value = true;
   try {
     const res = await CustomersAPI.getAll({
       pageSize: pageSize.value,
@@ -214,25 +265,20 @@ const loadData = async () => {
   } catch (error) {
     message.error(error.response?.data?.error?.message || "Lỗi khi lấy dữ liệu", 2);
   } finally {
-    loading.value = false;
+    isLoadingData.value = false;
   }
 };
 
-/** Xuất file CSV/Excel các bản ghi được chọn */
+/**
+ * Xuất file CSV/Excel các bản ghi được chọn
+ */
 const handleExportCsv = async (ids) => {
   try {
     const res = await CustomersAPI.exportCsv(ids, {
       responseType: "blob",
     });
 
-    // Lấy filename từ header nếu backend trả về
-    const contentDisposition = res.headers["content-disposition"];
     let fileName = "customers.csv";
-
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?(.+)"?/);
-      if (match && match[1]) fileName = match[1];
-    }
 
     // Tạo URL tạm cho file blob
     const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -244,9 +290,11 @@ const handleExportCsv = async (ids) => {
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
 
+    // Trigger click để download
     link.click();
-    document.body.removeChild(link);
 
+    // Loại bỏ thẻ a
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
 
     // clear checkbox
@@ -258,14 +306,17 @@ const handleExportCsv = async (ids) => {
   }
 };
 
-/** Import file CSV/Excel */
+/**
+ * Import file CSV/Excel
+ */
 const handleImportCsv = async () => {
   if (!uploadedFile.value) {
     message.warning("Vui lòng tải lên file CSV trước khi gửi.", 2);
     return;
   }
 
-  loading.value = true;
+  isImportLoading.value = true;
+  isLoadingData.value = true;
   const formData = new FormData();
   formData.append("file", uploadedFile.value);
 
@@ -289,25 +340,25 @@ const handleImportCsv = async () => {
     uploadSuccess.value = false;
 
     //load lại data
-    await loadData();
-    await getTotalData();
+    await Promise.all([loadData(), getTotalData()]);
   } catch (error) {
     message.error(error.response?.data?.error?.message || "Lỗi khi nhập file.", 2);
   } finally {
-    loading.value = false;
+    isImportLoading.value = false;
+    isLoadingData.value = false;
   }
 };
 
-/** chọn loại khách hàng */
+/**
+ * Hàm xử lý khi chọn loại khách hàng trong dropdown filter
+ */
 const handleSelectCustomerType = (type) => {
   customerTypeFilter.value = type; // "" là tất cả
-
-  pageNumber.value = 1;
-  loadData();
-  getTotalData();
 };
 
-/** Xóa mềm nhiều khách hàng cùng lúc */
+/**
+ * Xóa mềm nhiều khách hàng cùng lúc
+ */
 const handleSoftDeleteMany = (ids) => {
   if (selectedIds.value.length === 0) {
     message.warning("Vui lòng chọn ít nhất một khách hàng.", 2);
@@ -321,58 +372,69 @@ const handleSoftDeleteMany = (ids) => {
     okType: "danger",
     cancelText: "Hủy",
     async onOk() {
-      loading.value = true;
+      isLoadingData.value = true;
       try {
         const res = await CustomersAPI.softDeleteMany(ids);
 
+        const data = res.data.data;
+
+        // Nếu data = 0 || null thì báo lỗi
+        if (!data) {
+          message.error(data?.error?.message);
+          return;
+        }
+
         // Xóa xong thì gọi load lại data và số trang
-        await loadData();
-        await getTotalData();
+        await Promise.all([loadData(), getTotalData()]);
 
         // reset lại các ô checjked về rỗng và số lượng ô được checked về 0
         selectedIds.value = [];
         checkedCount.value = 0;
 
         // Trả ra thông báo xóa thành công
-        message.success(`${res.data.data}`, 2);
+        message.success(`Xóa thành công ${data} khách hàng`, 2);
       } catch (error) {
         message.error(
           error.response?.data?.error?.message || "Thao tác xóa hàng loạt thất bại.",
           2
         );
       } finally {
-        loading.value = false;
+        isLoadingData.value = false;
       }
     },
   });
 };
 
-/** Gắn loại khách hàng hàng loạt */
-const handleAssignCustomerType = async () => {
-  if (!selectedCustomerType.value) {
-    message.warning("Vui lòng chọn một loại khách hàng.", 2);
+/**
+ * Gắn loại khách hàng hàng loạt
+ */
+const handleAssignCustomerType = async (type) => {
+  if (!type) return;
+
+  if (selectedIds.value.length === 0) {
+    message.warning("Vui lòng chọn ít nhất một khách hàng.", 2);
     return;
   }
 
-  loading.value = true;
+  // Gọi API và xử lý
+  isLoadingData.value = true;
   try {
-    await CustomersAPI.assignCustomerType(selectedIds.value, selectedCustomerType.value);
-    message.success(`Gắn loại khách hàng thành công`, 2);
-
-    closeAssignTypeModal();
+    await CustomersAPI.assignCustomerType(selectedIds.value, type);
+    message.success(`Đã gắn loại khách hàng thành công`, 2);
 
     // clear checkbox
     tableRef.value?.clearSelection();
-
     await loadData();
   } catch (error) {
     message.error(error.response?.data?.error?.message || "Gắn loại khách hàng thất bại.", 2);
   } finally {
-    loading.value = false;
+    isLoadingData.value = false;
   }
 };
 
-/** Debounce load dữ liệu khi tìm kiếm */
+/**
+ * Debounce load dữ liệu khi tìm kiếm
+ */
 const debouncedLoadData = debounce(() => {
   pageNumber.value = 1;
   loadData();
@@ -381,8 +443,8 @@ const debouncedLoadData = debounce(() => {
 //#endregion
 
 //#region Lifecycle Hooks
-onMounted(() => {
-  // Lấy query từ URL
+onMounted(async () => {
+  // Set tất cả state từ query
   const { search, page, size, sortBy: sBy, sortDirection: sDir, customerType } = route.query;
 
   if (search) searchValue.value = search;
@@ -392,9 +454,11 @@ onMounted(() => {
   if (sDir) sortDirection.value = sDir;
   if (customerType) customerTypeFilter.value = customerType;
 
-  // Load dữ liệu
-  loadData();
-  getTotalData();
+  // Load data 1 lần duy nhất
+  await Promise.all([loadData(), getTotalData()]);
+
+  // Đánh dấu đã load xong
+  isFirstLoad.value = false;
 });
 
 //#endregion
@@ -403,12 +467,14 @@ onMounted(() => {
 
 // Watch pageSize để reset pageNumber & loadData
 watch([pageSize, sortBy, sortDirection], () => {
+  if (isFirstLoad.value) return;
   pageNumber.value = 1;
   loadData();
 });
 
 // Watch pageNumber, sortBy, sortDirection để loadData
 watch(pageNumber, () => {
+  if (isFirstLoad.value) return;
   loadData();
 });
 
@@ -418,15 +484,12 @@ watch(searchValue, () => {
 });
 
 // Watch filter để loadData và getTotalData
-watch(
-  customerTypeFilter,
-  () => {
-    pageNumber.value = 1;
-    loadData();
-    getTotalData();
-  },
-  { deep: true }
-);
+watch(customerTypeFilter, () => {
+  if (isFirstLoad.value) return;
+  pageNumber.value = 1;
+  loadData();
+  getTotalData();
+});
 
 // Đồng bộ URL với các state: search, filter, pagination, sort
 watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFilter], () => {
@@ -510,9 +573,20 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
               >Xuất Excel</ms-button
             >
             <!-- Gắn loại khách hàng -->
-            <ms-button type="primary" class="assign-btn" @click="openAssignTypeModal"
-              >Gắn loại khách hàng</ms-button
-            >
+            <a-dropdown placement="bottomLeft" trigger="click">
+              <ms-button type="primary" variant="outlined" class="assign-btn">
+                Gắn loại khách hàng
+                <div class="icon-bg icon-dropdown icon-16 ml-4"></div>
+              </ms-button>
+
+              <template #overlay>
+                <a-menu @click="({ key }) => handleAssignCustomerType(key)">
+                  <a-menu-item v-for="opt in assignTypeOptions" :key="opt.value">
+                    {{ opt.label }}
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
           </div>
         </div>
         <!-- Right -->
@@ -590,7 +664,7 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
         v-model:checkedItemCount="checkedCount"
         @selectionChange="handleSelectionChange"
         @edit="handleEdit"
-        :loading="loading"
+        :loading="isLoadingData"
       />
     </div>
 
@@ -672,6 +746,7 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
       title="Nhập dữ liệu từ Excel"
       cancel-text="Hủy"
       confirm-text="Lưu"
+      :loading="isImportLoading"
       @confirm="handleImportCsv"
     >
       <div class="modal-import modal-body flex-col gap-2">
@@ -705,22 +780,6 @@ watch([searchValue, pageNumber, pageSize, sortBy, sortDirection, customerTypeFil
             </ms-button>
           </div>
         </div>
-      </div>
-    </ms-modal>
-
-    <!-- Modal gắn loại khách hàng -->
-    <ms-modal
-      v-model:show="isAssignTypeModalOpen"
-      title="Gắn loại khách hàng"
-      cancel-text="Hủy"
-      confirm-text="Áp dụng"
-      @confirm="handleAssignCustomerType"
-    >
-      <div class="modal-body flex-col gap-4">
-        <label v-for="type in ['VIP', 'NBH01', 'LKHA']" :key="type" class="flex items-center gap-8">
-          <input type="radio" name="customerType" :value="type" v-model="selectedCustomerType" />
-          {{ type }}
-        </label>
       </div>
     </ms-modal>
   </div>

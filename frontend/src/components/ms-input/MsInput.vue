@@ -1,5 +1,6 @@
 <script setup>
 import dayjs from "dayjs";
+import { ref } from "vue";
 
 //#region Props
 /**
@@ -74,6 +75,10 @@ defineProps({
 });
 //#endregion Props
 
+//#region States
+const inputRef = ref(null);
+//endregion
+
 //#region Emits
 /**
  * Emits:
@@ -83,6 +88,7 @@ const emit = defineEmits(["update:modelValue", "blur"]);
 //#endregion Emits
 
 //#region Methods
+
 /**
  * Xử lý input của kiểu text
  * @param {Event} e Sự kiện input
@@ -107,6 +113,18 @@ const handleDateChange = (date) => {
   emit("update:modelValue", date ? date.toDate() : null);
 };
 //#endregion Methods
+
+//#region Expose
+
+/**
+ * Expose method focus để component cha có thể gọi
+ */
+defineExpose({
+  focus: () => {
+    inputRef.value?.focus();
+  },
+});
+//#endregion
 </script>
 
 <template>
@@ -115,6 +133,7 @@ const handleDateChange = (date) => {
     <input
       v-if="type === 'text'"
       type="text"
+      ref="inputRef"
       :placeholder="placeholder"
       :tabindex="tabindex"
       :value="modelValue"

@@ -1,13 +1,18 @@
 <script setup>
+//#region Import
 import MsButton from "@/components/ms-button/MsButton.vue";
 import MsInput from "@/components/ms-input/MsInput.vue";
 
 import CustomersAPI from "@/apis/components/customers/CustomersAPI";
-import { ref, computed, reactive, onMounted } from "vue";
+import { ref, computed, reactive, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { message } from "ant-design-vue";
 
+import { validationRules, validationManager } from "@/utils/validation.js";
+
 import "@/assets/css/customerFormView.css";
+
+//#endregion
 
 //#region Routers
 // Khởi tạo router và route để điều hướng và lấy thông tin route hiện tại
@@ -57,33 +62,6 @@ const rightFields = [
 ];
 //#endregion
 
-//#region Validation Rules
-/**
- * Cấu hình rule validate cho từng field:
- * - required: bắt buộc nhập
- * - pattern: regex định dạng hợp lệ
- * - serverCheck: có cần check trùng trên server hay không
- */
-const validationRules = {
-  customerName: {
-    required: "Tên khách hàng không được để trống",
-  },
-  customerEmail: {
-    required: "Email không được để trống",
-    pattern: { regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Email không hợp lệ" },
-    serverCheck: true,
-  },
-  customerPhoneNumber: {
-    required: "Số điện thoại không được để trống",
-    pattern: {
-      regex: /^0\d{9,10}$/,
-      message: "Số điện thoại phải đúng định dạng và đủ 10 - 11 số",
-    },
-    serverCheck: true,
-  },
-};
-//#endregion
-
 //#region States
 /** Loading khi submit hoặc call API */
 const isLoading = ref(false);
@@ -97,18 +75,14 @@ const formData = reactive({});
 /** Lỗi validate cho từng field */
 const errors = reactive({});
 
-/** Khởi tạo value mặc định cho form và errors */
+/** Khởi tạo value mặc định cho formData và errors */
 [...leftFields, ...rightFields].forEach((item) => {
   formData[item.model] = null;
   errors[item.model] = "";
 });
 
-/** Cache kết quả kiểm tra trùng server: tránh gọi API nhiều lần */
-const serverCheckCache = reactive({
-  customerEmail: { value: null, exists: false },
-  customerPhoneNumber: { value: null, exists: false },
-});
-
+/** Thêm ref để tham chiếu đến input đầu tiên */
+const firstInputRef = ref(null);
 //#endregion
 
 //#region Computed
@@ -149,92 +123,62 @@ const tabindexMap = computed(() => {
 
 //#endregion
 
+//#region Validation Methods
+/**
+ * Validate một field với validation manager
+ * @param {string} field - Tên field cần validate
+ * @param {boolean} checkServer - Có check server không (true khi blur)
+ */
+const validateField = async (field, checkServer = false) => {
+  // Lấy ID hiện tại nếu đang ở chế độ sửa
+  const currentId = isEdit.value ? route.params.id : null;
+
+  // Gọi validation manager để validate
+  const error = await validationManager.validateField(
+    field,
+    formData[field],
+    checkServer,
+    currentId
+  );
+
+  // Cập nhật lỗi vào reactive errors
+  errors[field] = error;
+
+  return !error; // Return true nếu không có lỗi
+};
+
+/**
+ * Validate tất cả các field required trước khi submit
+ * @returns {Promise<boolean>} - true nếu tất cả hợp lệ
+ */
+const validateAllRequiredFields = async () => {
+  // Lấy danh sách field có rule validation
+  const fieldsToValidate = Object.keys(validationRules);
+
+  // Validate tất cả field (với server check)
+  const validationErrors = await validationManager.validateMultipleFields(
+    fieldsToValidate,
+    formData,
+    true, // Check server
+    isEdit.value ? route.params.id : null
+  );
+
+  // Cập nhật errors
+  Object.keys(validationErrors).forEach((field) => {
+    errors[field] = validationErrors[field];
+  });
+
+  // Return true nếu không có lỗi
+  return !validationManager.hasErrors(validationErrors);
+};
+//#endregion
+
 //#region Methods
 /**
  * Điều hướng quay về danh sách khách hàng
  */
 const handleCancel = () => {
   router.push("/customers");
-};
-
-/**
- * Validate 1 field (client + server)
- * @param {string} field
- * @param {boolean} checkExist - true: blur -> check server
- */
-const validateField = async (field, checkExist = false) => {
-  // Lấy ra value và khởi tạo lỗi cho các trường input
-  const rawValue = formData[field];
-  const value = rawValue ? String(rawValue).trim() : "";
-  errors[field] = "";
-
-  // Lấy ra các rule của từng trường
-  const rule = validationRules[field];
-  if (!rule) return true;
-
-  // required
-  if (rule.required && !value) {
-    errors[field] = rule.required;
-    return false;
-  }
-
-  // pattern
-  if (rule.pattern && value && !rule.pattern.regex.test(value)) {
-    errors[field] = rule.pattern.message;
-    return false;
-  }
-
-  // server check (email / phone)
-  if (rule.serverCheck && value) {
-    // Không check server khi đang nhập -> chỉ check cache
-    if (!checkExist) {
-      if (serverCheckCache[field].value === value && serverCheckCache[field].exists) {
-        errors[field] = field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
-        return false;
-      }
-      return true;
-    }
-
-    // blur -> gọi server khi:
-    // - giá trị thay đổi
-    // - cache chưa có
-    if (serverCheckCache[field].value !== value || serverCheckCache[field].exists === undefined) {
-      try {
-        let exists = false;
-
-        if (field === "customerEmail") {
-          const res = await CustomersAPI.checkEmailExist({ email: value, id: route.params.id });
-          exists = res.data.data;
-        } else if (field === "customerPhoneNumber") {
-          const res = await CustomersAPI.checkPhoneExist({
-            phoneNumber: value,
-            id: route.params.id,
-          });
-          exists = res.data.data;
-        }
-
-        // Lưu cache
-        serverCheckCache[field] = { value, exists };
-
-        if (exists) {
-          errors[field] =
-            field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
-          return false;
-        }
-      } catch {
-        errors[field] = `Lỗi khi kiểm tra ${field}`;
-        return false;
-      }
-    } else {
-      // Dùng cache nếu chưa đổi
-      if (serverCheckCache[field].exists) {
-        errors[field] = field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
-        return false;
-      }
-    }
-  }
-
-  return true;
 };
 
 /**
@@ -245,11 +189,11 @@ const handleSubmitForm = async (afterSuccess) => {
   isLoading.value = true;
 
   try {
-    const validName = await validateField("customerName", false);
-    const validEmail = await validateField("customerEmail", true);
-    const validPhone = await validateField("customerPhoneNumber", true);
-
-    if (!validName || !validEmail || !validPhone) return;
+    const isValid = await validateAllRequiredFields();
+    if (!isValid) {
+      message.warning("Vui lòng kiểm tra lại thông tin nhập vào!", 2);
+      return;
+    }
 
     if (isEdit.value) {
       // Cập nhật khách hàng
@@ -372,6 +316,17 @@ const uploadTempAvatar = async (e) => {
   }
 };
 
+/**
+ * Function để set ref cho input customerName
+ */
+const setInputRef = (model) => {
+  return (el) => {
+    if (model === "customerName") {
+      firstInputRef.value = el;
+    }
+  };
+};
+
 //#endregion
 
 //#region Lifecycle Hooks
@@ -380,9 +335,27 @@ const uploadTempAvatar = async (e) => {
  * On mounted:
  * - Nếu sửa -> load customer theo id
  * - Nếu thêm mới -> lấy mã khách hàng mới
+ * - Focus vào input customerName
  */
-onMounted(() => {
-  isEdit.value ? getCustomerById() : getNewCustomerCode();
+onMounted(async () => {
+  // Đợi API load xong
+  if (isEdit.value) {
+    await getCustomerById();
+  } else {
+    await getNewCustomerCode();
+  }
+
+  // Sau khi load xong, focus vào input customerName
+  await nextTick();
+
+  if (firstInputRef.value && typeof firstInputRef.value.focus === "function") {
+    firstInputRef.value.focus();
+  }
+});
+
+onUnmounted(() => {
+  // Clear cache khi component unmount để tránh memory leak
+  validationManager.clearAllCache();
 });
 //#endregion
 </script>
@@ -463,6 +436,7 @@ onMounted(() => {
                   </div>
                   <div class="flex-1 flex-col gap-4 input-field">
                     <ms-input
+                      :ref="setInputRef(item.model)"
                       :type="item.type"
                       :placeholder="item.placeholder || ''"
                       :options="item.options"
@@ -492,6 +466,7 @@ onMounted(() => {
                   </div>
                   <div class="flex-1 flex-col gap-4 input-field">
                     <ms-input
+                      :ref="setInputRef(item.model)"
                       :type="item.type"
                       :placeholder="item.placeholder || ''"
                       :options="item.options"
