@@ -18,7 +18,7 @@ export const formatNumber = (value) => {
 export const formatDate = (value) => {
   if (!value) return "";
   const date = new Date(value);
-  return new Intl.DateTimeFormat().format(date);
+  return new Intl.DateTimeFormat("vi-VN").format(date);
 };
 
 /**

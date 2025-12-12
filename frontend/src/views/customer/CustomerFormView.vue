@@ -1,87 +1,29 @@
 <script setup>
+//#region Import
 import MsButton from "@/components/ms-button/MsButton.vue";
 import MsInput from "@/components/ms-input/MsInput.vue";
 
 import CustomersAPI from "@/apis/components/customers/CustomersAPI";
-import { ref, computed, reactive, onMounted } from "vue";
+import { ref, computed, reactive, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { message } from "ant-design-vue";
 
+import { validationRules, validationManager } from "@/utils/validation.js";
+import {
+  LEFT_FIELDS,
+  RIGHT_FIELDS,
+  MESSAGES,
+  ROUTES,
+} from "@/commons/constants/customerConstants.js";
+
 import "@/assets/css/customerFormView.css";
+
+//#endregion
 
 //#region Routers
 // Khởi tạo router và route để điều hướng và lấy thông tin route hiện tại
 const router = useRouter();
 const route = useRoute();
-//#endregion
-
-//#region Layout fields
-/**
- * Cấu hình danh sách các input bên trái của form
- * Mỗi object đại diện cho 1 ô input
- */
-const leftFields = [
-  { label: "Mã khách hàng", placeholder: "Mã tự sinh", model: "customerCode", disabled: true },
-  { label: "Điện thoại", model: "customerPhoneNumber", required: true },
-  { label: "Mã số thuế", model: "customerTaxCode" },
-  { label: "Hàng hóa đã mua", model: "purchasedItemCode" },
-  { label: "Tên hàng hóa đã mua", model: "purchasedItemName" },
-];
-
-/**
- * Cấu hình danh sách các input bên phải của form
- * Tương tự như leftFields nhưng có thêm select và date
- */
-const rightFields = [
-  { label: "Tên khách hàng", model: "customerName", required: true },
-  { label: "Email", model: "customerEmail", required: true },
-  {
-    label: "Loại khách hàng",
-    type: "select",
-    options: [
-      { label: "NBH01", value: "NBH01" },
-      { label: "LKHA", value: "LKHA" },
-      { label: "VIP", value: "VIP" },
-    ],
-    model: "customerType",
-    icon: "icon-bg icon-select-type icon-16",
-  },
-  {
-    label: "Ngày mua hàng gần nhất",
-    type: "date",
-    placeholder: "DD/MM/YYYY",
-    model: "lastPurchaseDate",
-    icon: "icon-bg icon-calendar icon-16",
-  },
-  { label: "Địa chỉ (Giao hàng)", model: "customerAddr" },
-];
-//#endregion
-
-//#region Validation Rules
-/**
- * Cấu hình rule validate cho từng field:
- * - required: bắt buộc nhập
- * - pattern: regex định dạng hợp lệ
- * - serverCheck: có cần check trùng trên server hay không
- */
-const validationRules = {
-  customerName: {
-    required: "Tên khách hàng không được để trống",
-  },
-  customerEmail: {
-    required: "Email không được để trống",
-    pattern: { regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Email không hợp lệ" },
-    serverCheck: true,
-  },
-  customerPhoneNumber: {
-    required: "Số điện thoại không được để trống",
-    pattern: {
-      regex: /^0\d{9,10}$/,
-      message: "Số điện thoại phải đúng định dạng và đủ 10 - 11 số",
-    },
-    serverCheck: true,
-  },
-};
 //#endregion
 
 //#region States
@@ -97,25 +39,21 @@ const formData = reactive({});
 /** Lỗi validate cho từng field */
 const errors = reactive({});
 
-/** Khởi tạo value mặc định cho form và errors */
-[...leftFields, ...rightFields].forEach((item) => {
+/** Khởi tạo value mặc định cho formData và errors */
+[...LEFT_FIELDS, ...RIGHT_FIELDS].forEach((item) => {
   formData[item.model] = null;
   errors[item.model] = "";
 });
 
-/** Cache kết quả kiểm tra trùng server: tránh gọi API nhiều lần */
-const serverCheckCache = reactive({
-  customerEmail: { value: null, exists: false },
-  customerPhoneNumber: { value: null, exists: false },
-});
-
+/** Thêm ref để tham chiếu đến input đầu tiên */
+const firstInputRef = ref(null);
 //#endregion
 
 //#region Computed
 /**
  * Kiểm tra đang ở chế độ sửa hay thêm mới
  */
-const isEdit = computed(() => route.name === "customer-edit");
+const isEdit = computed(() => route.name === ROUTES.EDIT);
 /**
  * Tiêu đề form dựa theo mode
  */
@@ -123,21 +61,41 @@ const title = computed(() => (isEdit.value ? "Sửa Khách hàng" : "Thêm Khác
 
 /**
  * Tính thứ tự tabindex hợp lý theo layout trái – phải
+ * Ví dụ với 5 trường bên trái và 5 trường bên phải:
+ * [LEFT_FIELDS[0], RIGHT_FIELDS[0], LEFT_FIELDS[1], RIGHT_FIELDS[1], ...]
+ *
+ * Mục đích: để tính toán tabindex hợp lý khi người dùng nhấn Tab
+ * (di chuyển từ trái sang phải, từ trên xuống dưới)
  */
 const allFieldsInOrder = computed(() => {
-  const maxLen = Math.max(leftFields.length, rightFields.length);
+  // Tìm độ dài lớn nhất giữa 2 cột
+  const maxLen = Math.max(LEFT_FIELDS.length, RIGHT_FIELDS.length);
   const ordered = [];
 
+  // Duyệt qua từng hàng, lấy trường trái trước, sau đó trường phải
   for (let i = 0; i < maxLen; i++) {
-    if (leftFields[i]) ordered.push(leftFields[i]);
-    if (rightFields[i]) ordered.push(rightFields[i]);
+    if (LEFT_FIELDS[i]) ordered.push(LEFT_FIELDS[i]);
+    if (RIGHT_FIELDS[i]) ordered.push(RIGHT_FIELDS[i]);
   }
 
   return ordered;
 });
 
 /**
- * Map: tên field -> tabindex tương ứng
+ * Tạo một object map để tra cứu nhanh tabindex của mỗi trường
+ * Key: tên trường (model)
+ * Value: số thứ tự tabindex (bắt đầu từ 1)
+ *
+ * Ví dụ:
+ * {
+ *   "customerCode": 1,
+ *   "customerName": 2,
+ *   "customerPhoneNumber": 3,
+ *   ...
+ * }
+ *
+ * Mục đích: để gán tabindex cho các input, giúp người dùng có thể
+ * di chuyển giữa các trường bằng phím Tab theo đúng thứ tự
  */
 const tabindexMap = computed(() => {
   const map = {};
@@ -149,92 +107,63 @@ const tabindexMap = computed(() => {
 
 //#endregion
 
+//#region Validation Methods
+/**
+ * Validate một field với validation manager
+ * @param {string} field - Tên field cần validate
+ * @param {boolean} checkServer - Có check server không (true khi blur)
+ * @returns {Promise<boolean>} - true nếu hợp lệ (không có lỗi), false nếu có lỗi
+ */
+const validateField = async (field, checkServer = false) => {
+  // Lấy ID hiện tại nếu đang ở chế độ sửa
+  const currentId = isEdit.value ? route.params.id : null;
+
+  // Gọi validation manager để validate
+  const error = await validationManager.validateField(
+    field,
+    formData[field],
+    checkServer,
+    currentId
+  );
+
+  // Cập nhật kết quả vào object errors để hiển thị lên UI
+  errors[field] = error;
+
+  return !error; // Return true nếu không có lỗi
+};
+
+/**
+ * Validate tất cả các field required trước khi submit
+ * @returns {Promise<boolean>} - true nếu tất cả hợp lệ
+ */
+const validateAllRequiredFields = async () => {
+  // Lấy danh sách field có rule validation
+  const fieldsToValidate = Object.keys(validationRules);
+
+  // Validate tất cả field (với server check)
+  const validationErrors = await validationManager.validateMultipleFields(
+    fieldsToValidate,
+    formData,
+    true, // Check server
+    isEdit.value ? route.params.id : null
+  );
+
+  // Cập nhật errors
+  Object.keys(validationErrors).forEach((field) => {
+    errors[field] = validationErrors[field];
+  });
+
+  // Return true nếu không có lỗi
+  return !validationManager.hasErrors(validationErrors);
+};
+//#endregion
+
 //#region Methods
 /**
  * Điều hướng quay về danh sách khách hàng
  */
 const handleCancel = () => {
-  router.push("/customers");
-};
-
-/**
- * Validate 1 field (client + server)
- * @param {string} field
- * @param {boolean} checkExist - true: blur -> check server
- */
-const validateField = async (field, checkExist = false) => {
-  // Lấy ra value và khởi tạo lỗi cho các trường input
-  const rawValue = formData[field];
-  const value = rawValue ? String(rawValue).trim() : "";
-  errors[field] = "";
-
-  // Lấy ra các rule của từng trường
-  const rule = validationRules[field];
-  if (!rule) return true;
-
-  // required
-  if (rule.required && !value) {
-    errors[field] = rule.required;
-    return false;
-  }
-
-  // pattern
-  if (rule.pattern && value && !rule.pattern.regex.test(value)) {
-    errors[field] = rule.pattern.message;
-    return false;
-  }
-
-  // server check (email / phone)
-  if (rule.serverCheck && value) {
-    // Không check server khi đang nhập -> chỉ check cache
-    if (!checkExist) {
-      if (serverCheckCache[field].value === value && serverCheckCache[field].exists) {
-        errors[field] = field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
-        return false;
-      }
-      return true;
-    }
-
-    // blur -> gọi server khi:
-    // - giá trị thay đổi
-    // - cache chưa có
-    if (serverCheckCache[field].value !== value || serverCheckCache[field].exists === undefined) {
-      try {
-        let exists = false;
-
-        if (field === "customerEmail") {
-          const res = await CustomersAPI.checkEmailExist({ email: value, id: route.params.id });
-          exists = res.data.data;
-        } else if (field === "customerPhoneNumber") {
-          const res = await CustomersAPI.checkPhoneExist({
-            phoneNumber: value,
-            id: route.params.id,
-          });
-          exists = res.data.data;
-        }
-
-        // Lưu cache
-        serverCheckCache[field] = { value, exists };
-
-        if (exists) {
-          errors[field] =
-            field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
-          return false;
-        }
-      } catch {
-        errors[field] = `Lỗi khi kiểm tra ${field}`;
-        return false;
-      }
-    } else {
-      // Dùng cache nếu chưa đổi
-      if (serverCheckCache[field].exists) {
-        errors[field] = field === "customerEmail" ? "Email đã tồn tại" : "Số điện thoại đã tồn tại";
-        return false;
-      }
-    }
-  }
-
-  return true;
+  router.push(ROUTES.LIST);
 };
 
 /**
@@ -245,11 +174,11 @@ const handleSubmitForm = async (afterSuccess) => {
   isLoading.value = true;
 
   try {
-    const validName = await validateField("customerName", false);
-    const validEmail = await validateField("customerEmail", true);
-    const validPhone = await validateField("customerPhoneNumber", true);
-
-    if (!validName || !validEmail || !validPhone) return;
+    const isValid = await validateAllRequiredFields();
+    if (!isValid) {
+      message.warning(MESSAGES.VALIDATE_WARNING, 2);
+      return;
+    }
 
     if (isEdit.value) {
       // Cập nhật khách hàng
@@ -258,21 +187,21 @@ const handleSubmitForm = async (afterSuccess) => {
       const data = res.data.data;
 
       if (!data) {
-        message.error("Khách hàng cần cập nhật không tồn tại hoặc ở trong thùng rác.", 2);
+        message.error(MESSAGES.UPDATE_NOT_FOUND_ERROR, 2);
         return;
       }
 
-      message.success("Cập nhật khách hàng thành công!", 2);
-      router.push("/customers/add");
+      message.success(MESSAGES.UPDATE_SUCCESS, 2);
+      router.push(ROUTES.ADD);
     } else {
       // Thêm mới khách hàng
       await CustomersAPI.add(formData);
-      message.success("Thêm khách hàng thành công!", 2);
+      message.success(MESSAGES.ADD_SUCCESS, 2);
     }
 
     if (typeof afterSuccess === "function") afterSuccess();
   } catch (err) {
-    message.error(err.response?.data?.error?.message || "Lỗi khi gửi dữ liệu", 2);
+    message.error(err.response?.data?.error?.message || MESSAGES.SUBMIT_ERROR, 2);
   } finally {
     isLoading.value = false;
   }
@@ -283,7 +212,7 @@ const handleSubmitForm = async (afterSuccess) => {
  */
 const handleSaveAndAdd = () => {
   handleSubmitForm(() => {
-    [...leftFields, ...rightFields].forEach((item) => (formData[item.model] = null));
+    [...LEFT_FIELDS, ...RIGHT_FIELDS].forEach((item) => (formData[item.model] = null));
 
     // Reset avatar ở đây
     imageUrl.value = null;
@@ -298,7 +227,7 @@ const handleSaveAndAdd = () => {
  */
 const handleSave = () => {
   handleSubmitForm(() => {
-    router.push("/customers");
+    router.push(ROUTES.LIST);
   });
 };
 
@@ -310,7 +239,7 @@ const getNewCustomerCode = async () => {
     const res = await CustomersAPI.getNewCustomerCode();
     formData.customerCode = res.data.data;
   } catch (err) {
-    message.error(err.response?.data?.error?.message || "Lỗi khi tạo mã khách hàng", 2);
+    message.error(err.response?.data?.error?.message || MESSAGES.CUSTOMER_CODE_ERROR, 2);
   }
 };
 
@@ -326,7 +255,7 @@ const getCustomerById = async () => {
     const res = await CustomersAPI.getById(customerId);
     const data = res.data.data;
     if (!data) {
-      message.error("Khách hàng không tồn tại hoặc ở trong thùng rác.", 2);
+      message.error(MESSAGES.NOT_FOUND_ERROR, 2);
       return;
     }
 
@@ -337,7 +266,7 @@ const getCustomerById = async () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
     imageUrl.value = formData.customerAvatarUrl ? baseUrl + formData.customerAvatarUrl : "";
   } catch (err) {
-    message.error(err.response?.data?.error?.message || "Lỗi khi lấy dữ liệu khách hàng", 2);
+    message.error(err.response?.data?.error?.message || MESSAGES.LOAD_DATA_ERROR, 2);
   } finally {
     isLoading.value = false;
   }
@@ -360,16 +289,32 @@ const uploadTempAvatar = async (e) => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
     const tempUrl = res.data?.data;
 
+    // Ghép URL đầy đủ để hiển thị ảnh
     imageUrl.value = baseUrl + tempUrl;
+
+    // Lưu đường dẫn vào form để gửi lên khi submit
     formData.customerAvatarUrl = tempUrl;
 
-    message.success("Tải ảnh lên thành công.", 2);
+    message.success(MESSAGES.UPLOAD_SUCCESS, 2);
   } catch (err) {
-    message.error(err.response?.data?.error?.message || "Tải ảnh lên thất bại", 2);
+    message.error(err.response?.data?.error?.message || MESSAGES.UPLOAD_ERROR, 2);
   } finally {
     isLoading.value = false;
     e.target.value = "";
   }
+};
+
+/**
+ * Function để set ref cho input customerName
+ * @param {string} model - Tên model của field
+ * @returns {Function} - Hàm callback nhận element
+ */
+const setInputRef = (model) => {
+  return (el) => {
+    if (model === "customerName") {
+      firstInputRef.value = el;
+    }
+  };
 };
 
 //#endregion
@@ -380,9 +325,34 @@ const uploadTempAvatar = async (e) => {
  * On mounted:
  * - Nếu sửa -> load customer theo id
  * - Nếu thêm mới -> lấy mã khách hàng mới
+ * - Focus vào input customerName
  */
-onMounted(() => {
-  isEdit.value ? getCustomerById() : getNewCustomerCode();
+onMounted(async () => {
+  // Đợi API load xong
+  if (isEdit.value) {
+    await getCustomerById();
+  } else {
+    await getNewCustomerCode();
+  }
+
+  // Sau khi load xong, focus vào input customerName
+  await nextTick();
+
+  // Kiểm tra firstInputRef.value có tồn tại và có method focus không
+  if (firstInputRef.value && typeof firstInputRef.value.focus === "function") {
+    firstInputRef.value.focus();
+  }
+});
+
+/**
+ * onUnmounted: Được gọi TRƯỚC KHI component bị hủy (unmount)
+ *
+ * Nhiệm vụ: Dọn dẹp các tài nguyên để tránh memory leak
+ *
+ */
+onUnmounted(() => {
+  // Clear cache khi component unmount để tránh memory leak
+  validationManager.clearAllCache();
 });
 //#endregion
 </script>
@@ -454,7 +424,7 @@ onMounted(() => {
               <!-- Left Column -->
               <div class="form-col flex-col">
                 <div
-                  v-for="item in leftFields"
+                  v-for="item in LEFT_FIELDS"
                   class="form-row flex items-center justify-between"
                   :key="item.label"
                 >
@@ -463,6 +433,7 @@ onMounted(() => {
                   </div>
                   <div class="flex-1 flex-col gap-4 input-field">
                     <ms-input
+                      :ref="setInputRef(item.model)"
                       :type="item.type"
                       :placeholder="item.placeholder || ''"
                       :options="item.options"
@@ -483,7 +454,7 @@ onMounted(() => {
               <!-- Right Column -->
               <div class="form-col flex-col">
                 <div
-                  v-for="item in rightFields"
+                  v-for="item in RIGHT_FIELDS"
                   class="form-row flex items-center justify-between"
                   :key="item.label"
                 >
@@ -492,6 +463,7 @@ onMounted(() => {
                   </div>
                   <div class="flex-1 flex-col gap-4 input-field">
                     <ms-input
+                      :ref="setInputRef(item.model)"
                       :type="item.type"
                       :placeholder="item.placeholder || ''"
                       :options="item.options"
